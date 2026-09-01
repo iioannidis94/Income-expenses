@@ -358,8 +358,8 @@ class UIManager {
                     <div class="badge-container" style="flex-direction:row; flex-wrap:wrap;">${badgesHTML}</div>
                 </td>
                 <td style="white-space: nowrap;">
-                    <button class="btn-edit btn-small" onclick="App.editExpense('${ex.id}')">✏️</button>
-                    <button class="btn-delete btn-small" onclick="App.deleteExpense('${ex.id}')">X</button>
+                    <button class="btn-edit btn-small" onclick="window.App.editExpense('${ex.id}')">✏️</button>
+                    <button class="btn-delete btn-small" onclick="window.App.deleteExpense('${ex.id}')">X</button>
                 </td>
             `;
             container.appendChild(tr);

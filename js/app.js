@@ -54,7 +54,6 @@ class MainApp {
         this.updateBaseState();
     }
 
-    // Extra Users
     addExtraUser() {
         const newId = 'u_' + Date.now().toString();
         this.stateManager.state.extraUsers.push({ id: newId, name: 'Νέος Χρήστης', income: 1000 });
@@ -87,7 +86,6 @@ class MainApp {
         }
     }
 
-    // Extra Incomes
     addExtraIncome() {
         this.stateManager.state.extraIncomes.push({ id: Date.now().toString(), name: 'Νέο Έσοδο', amount: 0 });
         this.stateManager.save();
@@ -109,7 +107,6 @@ class MainApp {
         }
     }
 
-    // Payment Methods
     addPaymentMethod() {
         const nameInput = document.getElementById('newPmName');
         const typeInput = document.getElementById('newPmType');
@@ -126,7 +123,7 @@ class MainApp {
             isPrimary: isPrimary
         });
         nameInput.value = '';
-        document.getElementById('newPmPrimary').checked = true; // reset
+        document.getElementById('newPmPrimary').checked = true;
         this.stateManager.save();
         this.ui.renderPaymentMethods();
         this.handleExpenseFormUI();
@@ -163,7 +160,6 @@ class MainApp {
         }
     }
 
-    // Tickets
     addTicket() {
         this.stateManager.state.tickets.push({ id: Date.now().toString(), name: 'Κουπόνι / Ticket', amount: 0, target: 'needs', owner: 'u1' });
         this.stateManager.save();
@@ -185,7 +181,6 @@ class MainApp {
         }
     }
 
-    // Expenses
     handleExpenseFormUI() {
         const data = BudgetCalculator.calculate(this.stateManager);
         this.ui.handleExpenseFormUI(data);
@@ -243,7 +238,6 @@ class MainApp {
         }
     }
     
-    // Rollover
     rolloverCategory(category) {
         const data = BudgetCalculator.calculate(this.stateManager);
         const remCash = category === 'needs' ? data.rem.needsCash : data.rem.wantsCash;
@@ -276,7 +270,6 @@ class MainApp {
         this.refresh();
     }
 
-    // Modals
     openChartModal() {
         document.getElementById('chartModal').style.display = 'flex';
         const data = BudgetCalculator.calculate(this.stateManager);
@@ -294,18 +287,14 @@ class MainApp {
         document.getElementById('settlementsModal').style.display = 'none';
     }
 
-    // Month Clear
     clearMonth() {
-        if (confirm("Είστε σίγουροι; Θα διαγραφούν τα έξοδα του τρέχοντος μήνα. 
-
-Αν είχατε κάνει 'Αποταμίευση Υπολοίπου', θα μεταφερθεί ως Έξτρα Έσοδο για το νέο μήνα!")) {
+        if (confirm("Είστε σίγουροι; Θα διαγραφούν τα έξοδα του τρέχοντος μήνα. \n\nΑν είχατε κάνει 'Αποταμίευση Υπολοίπου', θα μεταφερθεί ως Έξτρα Έσοδο για το νέο μήνα!")) {
             this.stateManager.clearExpenses();
             this.cancelEdit();
-            this.init(); // Need full init to redraw extra incomes
+            this.init();
         }
     }
 
-    // Backup
     exportData() {
         const dataStr = JSON.stringify(this.stateManager.state, null, 2);
         const blob = new Blob([dataStr], { type: "application/json" });
@@ -338,4 +327,4 @@ class MainApp {
     }
 }
 
-const App = new MainApp();
+window.App = new MainApp();
