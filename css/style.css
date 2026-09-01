@@ -133,6 +133,23 @@ button:hover { opacity: 0.9; }
 .checkbox-container input:checked + .checkmark::after { content: '✓'; color: #0f172a; font-size: 14px; font-weight: bold; }
 .voucher-checkbox-group { background: rgba(52, 211, 153, 0.1); padding: 12px; border-radius: 8px; border: 1px solid var(--wants-color); }
 
+/* Star Toggle for Primary Payment Method */
+.star-toggle {
+    cursor: pointer;
+    font-size: 1.25rem;
+    color: var(--border);
+    transition: 0.2s;
+    user-select: none;
+}
+.star-toggle:hover {
+    color: var(--savings-color);
+    opacity: 0.7;
+}
+.star-toggle.active {
+    color: var(--savings-color);
+    text-shadow: 0 0 8px rgba(245, 158, 11, 0.4);
+}
+
 .smart-fill-hint {
     display: inline-block; font-size: 0.75rem; color: var(--text-main); background: rgba(99, 102, 241, 0.2);
     border: 1px dashed var(--primary); padding: 4px 8px; border-radius: 6px; cursor: pointer; transition: 0.2s; font-weight: 600;
@@ -152,7 +169,6 @@ th { color: var(--text-muted); font-weight: 600; background: #0f172a; }
 .badge-owner { background: rgba(255, 255, 255, 0.1); color: var(--text-muted); border: 1px solid var(--border); font-size: 0.65rem;}
 .badge-cash { background: var(--pay-cash-bg); color: var(--pay-cash-text); border: 1px solid var(--pay-cash-border); }
 .badge-card { background: var(--pay-card-bg); color: var(--pay-card-text); border: 1px solid var(--pay-card-border); }
-.badge-primary { background: rgba(99,102,241,0.2); color: var(--primary); border: 1px solid var(--primary); font-size: 0.65rem; margin-left: 5px;}
 
 .amount-main { font-weight: bold; font-size: 1rem; }
 .btn-delete { background: rgba(248, 113, 113, 0.1); color: var(--danger); padding: 6px 10px; border-radius: 6px; border: 1px solid rgba(248, 113, 113, 0.2);}

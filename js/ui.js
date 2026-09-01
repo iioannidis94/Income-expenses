@@ -102,20 +102,19 @@ class UIManager {
         const c = document.getElementById('paymentMethodsContainer');
         c.innerHTML = this.stateManager.state.paymentMethods.map(pm => {
             const icon = pm.type === 'cash' ? '💵' : '💳';
-            const primaryBadge = pm.isPrimary ? `<span class="badge badge-primary">★ Βασικός</span>` : '';
             const ownerOpts = `<option value="joint" ${pm.owner === 'joint' ? 'selected' : ''}>Κοινό</option>` +
                 activeUsers.map(u => `<option value="${u.id}" ${pm.owner === u.id ? 'selected' : ''}>${u.name}</option>`).join('');
 
             return `
-            <div class="row form-group align-items-center" style="margin-bottom: 8px; flex-wrap:wrap;">
-                <div class="col" style="display:flex; align-items:center; gap: 10px;">
-                    <span style="font-size:1.2rem;">${icon}</span>
-                    <div>
-                        <input type="text" value="${pm.name}" onchange="App.updatePaymentMethod('${pm.id}', 'name', this.value)">
-                        ${primaryBadge}
+            <div class="row form-group align-items-center" style="margin-bottom: 8px; flex-wrap:nowrap;">
+                <div style="display:flex; align-items:center; gap: 8px; width: 100%;">
+                    <div style="display:flex; align-items:center; gap:6px;">
+                        <span class="star-toggle ${pm.isPrimary ? 'active' : ''}" onclick="App.togglePrimary('${pm.id}')" title="${pm.isPrimary ? 'Βασικός Λογαριασμός' : 'Ορισμός ως Βασικός'}">★</span>
+                        <span style="font-size:1.2rem;" title="${pm.type === 'cash' ? 'Μετρητά' : 'Κάρτα'}">${icon}</span>
                     </div>
+                    <input type="text" value="${pm.name}" style="flex:1; min-width:120px;" onchange="App.updatePaymentMethod('${pm.id}', 'name', this.value)">
                 </div>
-                <div class="col">
+                <div style="min-width:120px;">
                     <select onchange="App.updatePaymentMethod('${pm.id}', 'owner', this.value)">
                         ${ownerOpts}
                     </select>
@@ -183,7 +182,7 @@ class UIManager {
 
         const currentPmValue = pmSelect.value;
         pmSelect.innerHTML = this.stateManager.state.paymentMethods.map(pm => {
-            const primMark = pm.isPrimary ? ' (Βασικός)' : '';
+            const primMark = pm.isPrimary ? ' (★ Βασικός)' : '';
             return `<option value="${pm.id}">${pm.name} - ${pm.type === 'cash' ? 'Μετρητά' : 'Κάρτα'}${primMark}</option>`;
         }).join('');
         if (currentPmValue && this.stateManager.state.paymentMethods.find(pm => pm.id === currentPmValue)) {
@@ -346,7 +345,7 @@ class UIManager {
                     <div class="amount-main">${ex.amount.toFixed(2)} €</div>
                     <div class="badge-container" style="flex-direction:row; flex-wrap:wrap;">${badgesHTML}</div>
                 </td>
-                <td>
+                <td style="white-space: nowrap;">
                     <button class="btn-edit btn-small" onclick="App.editExpense('${ex.id}')">✏️</button>
                     <button class="btn-delete btn-small" onclick="App.deleteExpense('${ex.id}')">X</button>
                 </td>

@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Smart Budget Planner V14</title>
+    <title>Smart Budget Planner V15</title>
     <link rel="stylesheet" href="css/style.css">
     <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
 </head>
@@ -11,8 +11,8 @@
 
 <div class="container">
     <header>
-        <h1>Smart Budget Planner <span style="font-size: 1rem; color: var(--primary);">V14</span></h1>
-        <p>Επεξεργασία Εξόδων & Αναπλήρωση Βασικών Λογαριασμών (Dark Mode)</p>
+        <h1>Smart Budget Planner <span style="font-size: 1rem; color: var(--primary);">V15</span></h1>
+        <p>Επεξεργασία Λογαριασμών (Toggle Βασικού), Ταξινόμηση & Εκκαθάριση (Dark Mode)</p>
         <div class="header-actions" style="flex-wrap: wrap;">
             <button class="btn-secondary btn-small" onclick="App.exportData()">💾 Εξαγωγή (JSON)</button>
             <label class="btn-secondary btn-small" style="cursor:pointer;">
@@ -75,25 +75,26 @@
 
             <div class="user-block" style="border-color: var(--invest-color);">
                 <h3>Λογαριασμοί / Μέθοδοι Πληρωμής</h3>
-                <small class="help-text" style="margin-bottom: 15px;">Ορίστε ποιοι είναι οι "Βασικοί" (π.χ. Μισθοδοσίας) για να παρακολουθείτε την αναπλήρωση των υπολοίπων.</small>
+                <small class="help-text" style="margin-bottom: 15px;">Πατήστε το αστεράκι (★) για να ενεργοποιήσετε/απενεργοποιήσετε την ιδιότητα του "Βασικού" λογαριασμού.</small>
                 <div id="paymentMethodsContainer"></div>
+                
                 <div class="row form-group align-items-center mt-10" style="background: rgba(255,255,255,0.05); padding: 10px; border-radius: 8px; flex-wrap: wrap; gap: 10px;">
-                    <div class="col" style="min-width: 150px;">
+                    <div class="col" style="min-width: 150px; flex: 2;">
                         <input type="text" id="newPmName" placeholder="Όνομα Κάρτας/Μετρητών">
                     </div>
-                    <div class="col">
+                    <div class="col" style="flex: 1; min-width: 100px;">
                         <select id="newPmType">
                             <option value="cash">Μετρητά</option>
                             <option value="card">Κάρτα</option>
                         </select>
                     </div>
-                    <div class="col">
+                    <div class="col" style="flex: 1; min-width: 100px;">
                         <select id="newPmOwner">
                             <!-- Dynamic Users -->
                         </select>
                     </div>
-                    <div class="col" style="min-width: 120px;">
-                        <label class="checkbox-container" style="margin-bottom: 0;">
+                    <div style="display: flex; align-items: center; padding-top: 5px;">
+                        <label class="checkbox-container" style="margin: 0;">
                             <input type="checkbox" id="newPmPrimary" checked>
                             <span class="checkmark"></span>
                             Βασικός

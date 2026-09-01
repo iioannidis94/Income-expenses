@@ -2,7 +2,7 @@ class MainApp {
     constructor() {
         this.stateManager = new StateManager();
         this.ui = new UIManager(this.stateManager);
-        this.editingExpenseId = null; // Track if we are editing
+        this.editingExpenseId = null; 
         this.init();
     }
 
@@ -126,7 +126,7 @@ class MainApp {
             isPrimary: isPrimary
         });
         nameInput.value = '';
-        document.getElementById('newPmPrimary').checked = false; // Reset to unchecked
+        document.getElementById('newPmPrimary').checked = true; // reset to default
         this.stateManager.save();
         this.ui.renderPaymentMethods();
         this.handleExpenseFormUI();
@@ -146,6 +146,16 @@ class MainApp {
         if (pm) {
             if (field === 'name' && !value.trim()) return;
             pm[field] = field === 'name' ? value.trim() : value;
+            this.stateManager.save();
+            this.ui.renderPaymentMethods();
+            this.handleExpenseFormUI();
+            this.refresh();
+        }
+    }
+    togglePrimary(id) {
+        const pm = this.stateManager.state.paymentMethods.find(x => x.id === id);
+        if (pm) {
+            pm.isPrimary = !pm.isPrimary;
             this.stateManager.save();
             this.ui.renderPaymentMethods();
             this.handleExpenseFormUI();
@@ -194,7 +204,6 @@ class MainApp {
         if (!name || isNaN(amount) || amount <= 0) return;
 
         if (this.editingExpenseId) {
-            // Update existing
             const ex = this.stateManager.state.expenses.find(e => e.id === this.editingExpenseId);
             if (ex) {
                 ex.name = name; ex.category = category; ex.subCategory = subCategory;
@@ -203,7 +212,6 @@ class MainApp {
             }
             this.editingExpenseId = null;
         } else {
-            // Create new
             this.stateManager.state.expenses.push({
                 id: Date.now().toString(), timestamp: Date.now(),
                 name, category, subCategory, amount, isTicket, paymentMethod, expenseOwner
@@ -271,7 +279,7 @@ class MainApp {
         const url = URL.createObjectURL(blob);
         const a = document.createElement('a');
         a.href = url;
-        a.download = `smart_budget_backup_v14_${new Date().toISOString().slice(0, 10)}.json`;
+        a.download = `smart_budget_backup_v15_${new Date().toISOString().slice(0, 10)}.json`;
         document.body.appendChild(a);
         a.click();
         document.body.removeChild(a);
