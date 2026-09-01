@@ -3,17 +3,16 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Smart Budget Planner V10</title>
+    <title>Smart Budget Planner V12 (Modular JS)</title>
     <link rel="stylesheet" href="css/style.css">
-    <!-- Εισαγωγή της βιβλιοθήκης Chart.js για το γράφημα -->
     <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
 </head>
 <body>
 
 <div class="container">
     <header>
-        <h1>Smart Budget Planner <span style="font-size: 1rem; color: var(--primary);">V10</span></h1>
-        <p>Με Savings & Δυναμικό Γράφημα Στατιστικών (Modal)</p>
+        <h1>Smart Budget Planner <span style="font-size: 1rem; color: var(--primary);">V12</span></h1>
+        <p>Modular Αρχιτεκτονική JS, Ταξινόμηση, Ιδιοκτησία Λογαριασμών & Εκκαθάριση</p>
         <div class="header-actions" style="flex-wrap: wrap;">
             <button class="btn-secondary btn-small" onclick="App.exportData()">💾 Εξαγωγή (JSON)</button>
             <label class="btn-secondary btn-small" style="cursor:pointer;">
@@ -21,6 +20,7 @@
                 <input type="file" id="importFile" accept=".json" style="display:none;" onchange="App.importData(event)">
             </label>
             <button class="btn-secondary btn-small" style="border: 1px solid var(--danger); color: var(--danger); background: rgba(248,113,113,0.1);" onclick="App.clearMonth()">🗑️ Νέος Μήνας</button>
+            <button class="btn-secondary btn-small" style="background: var(--invest-color); color: white;" onclick="App.openSettlementsModal()">💸 Εκκαθάριση / Μεταφορές</button>
             <button class="btn-secondary btn-small" style="background: var(--primary); color: white;" onclick="App.openChartModal()">📊 Γράφημα</button>
         </div>
     </header>
@@ -75,9 +75,9 @@
 
             <div class="user-block" style="border-color: var(--invest-color);">
                 <h3>Λογαριασμοί / Μέθοδοι Πληρωμής</h3>
-                <small class="help-text" style="margin-bottom: 15px;">Προσθέστε τις κάρτες σας (π.χ. Πειραιώς Χρήστη 1) ή τα πορτοφόλια σας για ακριβή έλεγχο.</small>
+                <small class="help-text" style="margin-bottom: 15px;">Προσθέστε κάρτες/μετρητά και δηλώστε σε <b>ποιον ανήκουν</b> (για να υπολογίζονται οι μεταφορές).</small>
                 <div id="paymentMethodsContainer"></div>
-                <div class="row form-group align-items-center mt-10" style="background: rgba(255,255,255,0.05); padding: 10px; border-radius: 8px;">
+                <div class="row form-group align-items-center mt-10" style="background: rgba(255,255,255,0.05); padding: 10px; border-radius: 8px; flex-wrap: wrap;">
                     <div class="col">
                         <input type="text" id="newPmName" placeholder="Όνομα Κάρτας/Μετρητών">
                     </div>
@@ -85,6 +85,11 @@
                         <select id="newPmType">
                             <option value="cash">Μετρητά</option>
                             <option value="card">Κάρτα</option>
+                        </select>
+                    </div>
+                    <div class="col">
+                        <select id="newPmOwner">
+                            <!-- Dynamic Users -->
                         </select>
                     </div>
                     <div>
@@ -119,7 +124,6 @@
                     <label>Invest (%)</label>
                     <input type="number" id="percInvest" oninput="App.updateBaseState()">
                 </div>
-                <!-- ΝΕΟ ΠΕΔΙΟ SAVINGS -->
                 <div class="col">
                     <label style="color: var(--savings-color);">Savings (%)</label>
                     <input type="number" id="percSavings" oninput="App.updateBaseState()">
@@ -188,7 +192,7 @@
             <div class="grid-3">
                 <div class="form-group">
                     <label>Ονομασία Εξόδου</label>
-                    <input type="text" id="expName" placeholder="π.χ. Supermarket" required>
+                    <input type="text" id="expName" placeholder="π.χ. ΔΕΗ, Supermarket" required>
                 </div>
                 
                 <div class="form-group">
@@ -214,18 +218,28 @@
                 </div>
                 
                 <div class="form-group mb-0">
-                    <label>Τρόπος Πληρωμής</label>
+                    <label>Λογαριασμός (Από πού πληρώθηκε;)</label>
                     <select id="expPaymentMethod">
                         <!-- Dynamic via JS -->
                     </select>
                 </div>
 
+                <div class="form-group mb-0">
+                    <label>Σε ποιον αφορά; (Ιδιοκτησία Εξόδου)</label>
+                    <select id="expOwner">
+                        <option value="joint">Κοινό Έξοδο (Μοιράζεται)</option>
+                        <!-- Dynamic users via JS -->
+                    </select>
+                </div>
+            </div>
+
+            <div class="row align-items-center mt-10">
                 <div class="form-group mb-0 voucher-checkbox-group" id="voucherToggleGroup" style="display: none;">
                     <label class="checkbox-container">
                         <input type="checkbox" id="expIsTicket">
                         <span class="checkmark"></span>
                         Χρήση διαθέσιμου Ticket
-                        <small style="display:block; font-size:0.7rem; color:var(--text-muted); margin-top:2px;">(Η διαφορά θα καλυφθεί από την επιλεγμένη μέθοδο)</small>
+                        <small style="display:block; font-size:0.7rem; color:var(--text-muted); margin-top:2px;">(Η διαφορά θα καλυφθεί από τον επιλεγμένο λογαριασμό)</small>
                     </label>
                 </div>
             </div>
@@ -234,17 +248,29 @@
         </form>
     </section>
 
-    <!-- TABLES -->
+    <!-- TABLES WITH SORTING -->
     <div class="grid-2">
         <!-- NEEDS TABLE -->
         <section class="card">
-            <h3>Πάγια Έξοδα & Ανάγκες (Needs)</h3>
+            <div class="row justify-content-between align-items-center" style="margin-bottom: 15px; flex-wrap: wrap; gap: 10px;">
+                <h3 style="margin: 0;">Πάγια Έξοδα & Ανάγκες (Needs)</h3>
+                <div>
+                    <select id="sortNeeds" class="btn-small" style="background: var(--bg-color); color: var(--text-main);" onchange="App.renderDashboard()">
+                        <option value="newest">Νεότερα Πρώτα</option>
+                        <option value="oldest">Παλαιότερα Πρώτα</option>
+                        <option value="price_desc">Ποσό (Φθίνουσα)</option>
+                        <option value="price_asc">Ποσό (Αύξουσα)</option>
+                        <option value="pm">Ανά Λογαριασμό Πληρωμής</option>
+                    </select>
+                </div>
+            </div>
+            
             <div class="table-container">
                 <table>
                     <thead>
                         <tr>
                             <th>Όνομα</th>
-                            <th>Κατηγορία</th>
+                            <th>Κατηγορία / Αφορά</th>
                             <th>Ποσό / Ανάλυση</th>
                             <th></th>
                         </tr>
@@ -266,13 +292,25 @@
 
         <!-- WANTS TABLE -->
         <section class="card">
-            <h3>Επιθυμίες (Wants)</h3>
+            <div class="row justify-content-between align-items-center" style="margin-bottom: 15px; flex-wrap: wrap; gap: 10px;">
+                <h3 style="margin: 0;">Επιθυμίες (Wants)</h3>
+                <div>
+                    <select id="sortWants" class="btn-small" style="background: var(--bg-color); color: var(--text-main);" onchange="App.renderDashboard()">
+                        <option value="newest">Νεότερα Πρώτα</option>
+                        <option value="oldest">Παλαιότερα Πρώτα</option>
+                        <option value="price_desc">Ποσό (Φθίνουσα)</option>
+                        <option value="price_asc">Ποσό (Αύξουσα)</option>
+                        <option value="pm">Ανά Λογαριασμό Πληρωμής</option>
+                    </select>
+                </div>
+            </div>
+
             <div class="table-container">
                 <table>
                     <thead>
                         <tr>
                             <th>Όνομα</th>
-                            <th>Κατηγορία</th>
+                            <th>Κατηγορία / Αφορά</th>
                             <th>Ποσό / Ανάλυση</th>
                             <th></th>
                         </tr>
@@ -306,6 +344,25 @@
     </div>
 </div>
 
+<!-- SETTLEMENTS MODAL -->
+<div id="settlementsModal" class="modal-overlay" style="display:none;">
+    <div class="modal-content" style="max-width: 700px;">
+        <span class="close-btn" onclick="App.closeSettlementsModal()">&times;</span>
+        <h2 style="margin-top:0; color: var(--invest-color);">Εκκαθάριση & Μεταφορές</h2>
+        <p style="color: var(--text-muted); font-size: 0.9rem; margin-bottom: 20px;">
+            Υπολογισμός μεριδίων βάσει κοινών εξόδων. Εδώ βλέπετε ποιος χρωστάει σε ποιον και σε ποια κάρτα/λογαριασμό πρέπει να μπουν τα χρήματα, ώστε να έρθετε "στα ίσια".
+        </p>
+        <div id="settlementsBody" style="background: var(--bg-color); padding: 15px; border-radius: 8px; border: 1px solid var(--border);">
+            <!-- Dynamic Settlements -->
+        </div>
+    </div>
+</div>
+
+<!-- MODULAR JAVASCRIPT FILES -->
+<script src="js/state.js"></script>
+<script src="js/calculator.js"></script>
+<script src="js/settlements.js"></script>
+<script src="js/ui.js"></script>
 <script src="js/app.js"></script>
 </body>
 </html>
