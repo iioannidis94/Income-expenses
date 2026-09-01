@@ -3,15 +3,15 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Smart Budget Planner V4</title>
+    <title>Smart Budget Planner V5</title>
     <link rel="stylesheet" href="css/style.css">
 </head>
 <body>
 
 <div class="container">
     <header>
-        <h1>Smart Budget Planner <span style="font-size: 1rem; color: var(--primary);">V4</span></h1>
-        <p>Custom Έσοδα, Δυναμικά Tickets & Συνεισφορές Χρηστών (Dark Mode & Backup)</p>
+        <h1>Smart Budget Planner <span style="font-size: 1rem; color: var(--primary);">V5</span></h1>
+        <p>Tickets ανά Χρήστη & Ακριβής Διαμοιρασμός (Dark Mode & Backup)</p>
         <div class="header-actions">
             <button class="btn-secondary btn-small" onclick="App.exportData()">💾 Εξαγωγή (JSON)</button>
             <label class="btn-secondary btn-small" style="cursor:pointer;">
@@ -68,8 +68,8 @@
             <hr class="divider">
 
             <div class="user-block" style="border-color: var(--wants-color);">
-                <h3>Κουπόνια / Tickets</h3>
-                <small class="help-text" style="margin-bottom: 15px;">Επιλέξτε αν το κουπόνι θα μειώσει τα έξοδα των Needs (π.χ. Supermarket) ή των Wants.</small>
+                <h3>Κουπόνια / Tickets ανά Χρήστη</h3>
+                <small class="help-text" style="margin-bottom: 15px;">Επιλέξτε σε ποιον ανήκει το ticket. Συνυπολογίζεται στο συνολικό του έσοδο για το διαμοιρασμό!</small>
                 <div id="ticketsContainer"></div>
                 <button class="btn-secondary btn-small mt-10" onclick="App.addTicket()" style="background-color: var(--wants-color); color: #0f172a;">+ Προσθήκη Ticket</button>
             </div>
@@ -97,7 +97,7 @@
             <!-- USER BREAKDOWN -->
             <div class="user-breakdown">
                 <h4>Αναλογία Συνεισφοράς Χρηστών</h4>
-                <small style="color: var(--text-muted); display: block; margin-bottom: 10px;">Βάσει των προσωπικών τους εσόδων (Cash)</small>
+                <small style="color: var(--text-muted); display: block; margin-bottom: 10px;">Βάσει προσωπικών εσόδων (Μετρητά + Tickets)</small>
                 <div class="table-container">
                     <table class="breakdown-table">
                         <thead>

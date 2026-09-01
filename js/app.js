@@ -1,6 +1,6 @@
 class BudgetApp {
     constructor() {
-        this.storageKey = 'smart_budget_v4_data';
+        this.storageKey = 'smart_budget_v5_data';
         
         this.state = {
             users: {
@@ -8,7 +8,7 @@ class BudgetApp {
                 u2: { active: false, name: 'Χρήστης 2', income: 1000 }
             },
             extraIncomes: [], // {id, name, amount}
-            tickets: [], // {id, name, amount, target: 'needs' | 'wants'}
+            tickets: [], // {id, name, amount, target: 'needs' | 'wants', owner: 'u1' | 'u2'}
             percentages: { needs: 50, wants: 30, invest: 20 },
             expenses: [] // {id, name, category, subCategory, amount, isTicket}
         };
@@ -53,14 +53,13 @@ class BudgetApp {
 
     migrateAndSetState(data) {
         if (!data.extraIncomes) data.extraIncomes = [];
-        if (!data.tickets) {
-            data.tickets = [];
-            // Migrate from V3 vouchers
-            if (data.vouchers) {
-                data.tickets.push({ id: 'v3-migration', name: 'Legacy Ticket', amount: data.vouchers, target: 'needs' });
-                delete data.vouchers;
-            }
-        }
+        if (!data.tickets) data.tickets = [];
+        
+        // V5 Ticket Migration: Add owner field if missing
+        data.tickets.forEach(t => {
+            if (!t.owner) t.owner = 'u1';
+        });
+
         if (data.expenses) {
             data.expenses.forEach(e => {
                 if (e.useVoucher !== undefined) {
@@ -78,7 +77,6 @@ class BudgetApp {
 
     // --- DOM Updates ---
     fullRender() {
-        // Hydrate Static Inputs
         document.getElementById('user1Name').value = this.state.users.u1.name;
         document.getElementById('user1Income').value = this.state.users.u1.income;
         document.getElementById('user2Name').value = this.state.users.u2.name;
@@ -93,7 +91,6 @@ class BudgetApp {
         this.renderExtraIncomes();
         this.renderTickets();
         
-        // Expense form init
         const subCatSelect = document.getElementById('expSubCategory');
         subCatSelect.dataset.currentCat = ''; 
         this.handleExpenseFormUI(); 
@@ -116,6 +113,7 @@ class BudgetApp {
         document.getElementById('percentageError').style.display = (pN + pW + pI !== 100) ? 'block' : 'none';
 
         this.saveState();
+        this.renderTickets(); // Re-render to update user names in dropdowns
         this.renderDashboard();
     }
 
@@ -123,6 +121,14 @@ class BudgetApp {
         this.state.users.u2.active = isActive;
         document.getElementById('user2Container').style.display = isActive ? 'block' : 'none';
         document.getElementById('addUser2Btn').style.display = isActive ? 'none' : 'block';
+        
+        // If user 2 is deactivated, reassign their tickets to user 1
+        if (!isActive) {
+            this.state.tickets.forEach(t => {
+                if (t.owner === 'u2') t.owner = 'u1';
+            });
+        }
+        
         if (!isInit) this.updateBaseState();
     }
 
@@ -144,7 +150,7 @@ class BudgetApp {
         if (item) {
             item[field] = field === 'amount' ? (parseFloat(value) || 0) : value;
             this.saveState();
-            this.renderDashboard(); // Update numbers without rebuilding inputs
+            this.renderDashboard();
         }
     }
     renderExtraIncomes() {
@@ -168,7 +174,7 @@ class BudgetApp {
 
     // --- Dynamic Tickets ---
     addTicket() {
-        this.state.tickets.push({ id: Date.now().toString(), name: 'Κουπόνι / Ticket', amount: 0, target: 'needs' });
+        this.state.tickets.push({ id: Date.now().toString(), name: 'Κουπόνι / Ticket', amount: 0, target: 'needs', owner: 'u1' });
         this.saveState();
         this.renderTickets();
         this.renderDashboard();
@@ -190,7 +196,7 @@ class BudgetApp {
     renderTickets() {
         const c = document.getElementById('ticketsContainer');
         c.innerHTML = this.state.tickets.map(t => `
-            <div class="row form-group align-items-center">
+            <div class="row form-group align-items-center" style="flex-wrap: wrap;">
                 <div class="col">
                     <label>Όνομα Ticket</label>
                     <input type="text" value="${t.name}" oninput="App.updateTicket('${t.id}', 'name', this.value)">
@@ -202,8 +208,15 @@ class BudgetApp {
                 <div class="col">
                     <label>Προορισμός</label>
                     <select onchange="App.updateTicket('${t.id}', 'target', this.value)">
-                        <option value="needs" ${t.target === 'needs' ? 'selected' : ''}>Needs (Ανάγκες)</option>
-                        <option value="wants" ${t.target === 'wants' ? 'selected' : ''}>Wants (Επιθυμίες)</option>
+                        <option value="needs" ${t.target === 'needs' ? 'selected' : ''}>Needs</option>
+                        <option value="wants" ${t.target === 'wants' ? 'selected' : ''}>Wants</option>
+                    </select>
+                </div>
+                <div class="col">
+                    <label>Κάτοχος</label>
+                    <select onchange="App.updateTicket('${t.id}', 'owner', this.value)">
+                        <option value="u1" ${t.owner === 'u1' ? 'selected' : ''}>${this.state.users.u1.name}</option>
+                        ${this.state.users.u2.active ? `<option value="u2" ${t.owner === 'u2' ? 'selected' : ''}>${this.state.users.u2.name}</option>` : ''}
                     </select>
                 </div>
                 <div>
@@ -229,7 +242,6 @@ class BudgetApp {
             subCatSelect.dataset.currentCat = cat;
         }
 
-        // Show/Hide ticket checkbox
         const totals = this.calculateTotals();
         const checkboxGroup = document.getElementById('voucherToggleGroup');
         const checkInput = document.getElementById('expIsTicket');
@@ -271,27 +283,42 @@ class BudgetApp {
 
     // --- Core Math ---
     calculateTotals() {
-        let cashIncome = this.state.users.u1.income + (this.state.users.u2.active ? this.state.users.u2.income : 0);
-        this.state.extraIncomes.forEach(e => cashIncome += e.amount);
+        let u1Cash = this.state.users.u1.income;
+        let u2Cash = this.state.users.u2.active ? this.state.users.u2.income : 0;
+        
+        let extraIncomeTotal = 0;
+        this.state.extraIncomes.forEach(e => extraIncomeTotal += e.amount);
 
-        let ticketIncome = 0;
-        let needsTicketsTotal = 0;
-        let wantsTicketsTotal = 0;
+        let u1TicketsNeeds = 0, u1TicketsWants = 0;
+        let u2TicketsNeeds = 0, u2TicketsWants = 0;
 
         this.state.tickets.forEach(t => {
-            ticketIncome += t.amount;
-            if (t.target === 'needs') needsTicketsTotal += t.amount;
-            if (t.target === 'wants') wantsTicketsTotal += t.amount;
+            if (t.owner === 'u2' && this.state.users.u2.active) {
+                if (t.target === 'needs') u2TicketsNeeds += t.amount;
+                if (t.target === 'wants') u2TicketsWants += t.amount;
+            } else {
+                if (t.target === 'needs') u1TicketsNeeds += t.amount;
+                if (t.target === 'wants') u1TicketsWants += t.amount;
+            }
         });
 
-        const totalIncome = cashIncome + ticketIncome;
+        const u1TicketsTotal = u1TicketsNeeds + u1TicketsWants;
+        const u2TicketsTotal = u2TicketsNeeds + u2TicketsWants;
+        
+        const totalIncome = u1Cash + u2Cash + extraIncomeTotal + u1TicketsTotal + u2TicketsTotal;
 
-        const p = this.state.percentages;
+        const pN = this.state.percentages.needs / 100;
+        const pW = this.state.percentages.wants / 100;
+        const pI = this.state.percentages.invest / 100;
+
         const limits = {
-            needs: totalIncome * (p.needs / 100),
-            wants: totalIncome * (p.wants / 100),
-            invest: totalIncome * (p.invest / 100)
+            needs: totalIncome * pN,
+            wants: totalIncome * pW,
+            invest: totalIncome * pI
         };
+
+        const needsTicketsTotal = u1TicketsNeeds + u2TicketsNeeds;
+        const wantsTicketsTotal = u1TicketsWants + u2TicketsWants;
 
         const needsCashAllocated = limits.needs - needsTicketsTotal;
         const wantsCashAllocated = limits.wants - wantsTicketsTotal;
@@ -309,7 +336,9 @@ class BudgetApp {
         });
 
         return {
-            totalIncome, limits, 
+            u1: { cash: u1Cash, ticketsNeeds: u1TicketsNeeds, ticketsWants: u1TicketsWants, ticketsTotal: u1TicketsTotal },
+            u2: { cash: u2Cash, ticketsNeeds: u2TicketsNeeds, ticketsWants: u2TicketsWants, ticketsTotal: u2TicketsTotal },
+            extraIncomeTotal, totalIncome, limits, 
             needsCashAllocated, wantsCashAllocated, needsTicketsTotal, wantsTicketsTotal,
             rem: {
                 needsCash: needsCashAllocated - spent.needsCash,
@@ -329,21 +358,30 @@ class BudgetApp {
         const pW = this.state.percentages.wants / 100;
         const pI = this.state.percentages.invest / 100;
 
-        const u1Cash = this.state.users.u1.income;
+        const formatCell = (totalAlloc, ticketValue) => {
+            const cashOwed = totalAlloc - ticketValue;
+            return `<strong>${totalAlloc.toFixed(2)}€</strong><br>
+                    <small style="font-size:0.75rem; font-weight:normal; color:var(--text-muted);">
+                        Cash: <span style="color:${cashOwed < 0 ? 'var(--danger)' : 'inherit'}">${cashOwed.toFixed(2)}€</span>
+                        ${ticketValue > 0 ? ` | Tcks: ${ticketValue.toFixed(2)}€` : ''}
+                    </small>`;
+        };
+
+        const u1Total = data.u1.cash + data.u1.ticketsTotal;
         let breakdownHTML = `<tr>
             <td>${this.state.users.u1.name}</td>
-            <td>${(u1Cash * pN).toFixed(2)}€</td>
-            <td>${(u1Cash * pW).toFixed(2)}€</td>
-            <td>${(u1Cash * pI).toFixed(2)}€</td>
+            <td>${formatCell(u1Total * pN, data.u1.ticketsNeeds)}</td>
+            <td>${formatCell(u1Total * pW, data.u1.ticketsWants)}</td>
+            <td>${formatCell(u1Total * pI, 0)}</td>
         </tr>`;
 
         if (this.state.users.u2.active) {
-            const u2Cash = this.state.users.u2.income;
+            const u2Total = data.u2.cash + data.u2.ticketsTotal;
             breakdownHTML += `<tr>
                 <td>${this.state.users.u2.name}</td>
-                <td>${(u2Cash * pN).toFixed(2)}€</td>
-                <td>${(u2Cash * pW).toFixed(2)}€</td>
-                <td>${(u2Cash * pI).toFixed(2)}€</td>
+                <td>${formatCell(u2Total * pN, data.u2.ticketsNeeds)}</td>
+                <td>${formatCell(u2Total * pW, data.u2.ticketsWants)}</td>
+                <td>${formatCell(u2Total * pI, 0)}</td>
             </tr>`;
         }
         document.getElementById('userBreakdownBody').innerHTML = breakdownHTML;
@@ -397,7 +435,6 @@ class BudgetApp {
         setRem('remWantsCash', data.rem.wantsCash);
         setRem('remWantsTickets', data.rem.wantsTickets);
 
-        // Update form UI to show/hide ticket checkbox dynamically
         this.handleExpenseFormUI();
     }
 
@@ -409,7 +446,7 @@ class BudgetApp {
         
         const a = document.createElement('a');
         a.href = url;
-        a.download = `smart_budget_backup_v4_${new Date().toISOString().slice(0,10)}.json`;
+        a.download = `smart_budget_backup_v5_${new Date().toISOString().slice(0,10)}.json`;
         document.body.appendChild(a);
         a.click();
         
