@@ -126,12 +126,11 @@ class UIManager {
             `;
         }).join('');
         
-        // Also update rollover selects
         const pmOptions = this.stateManager.state.paymentMethods.map(pm => `<option value="${pm.id}">${pm.name}</option>`).join('');
         const rollNeeds = document.getElementById('rolloverNeedsPm');
         const rollWants = document.getElementById('rolloverWantsPm');
-        if (rollNeeds) rollNeeds.innerHTML = pmOptions;
-        if (rollWants) rollWants.innerHTML = pmOptions;
+        if (rollNeeds && rollNeeds.innerHTML !== pmOptions) rollNeeds.innerHTML = pmOptions;
+        if (rollWants && rollWants.innerHTML !== pmOptions) rollWants.innerHTML = pmOptions;
     }
 
     renderTickets() {
@@ -308,11 +307,14 @@ class UIManager {
         document.getElementById('limitInvest').innerText = data.limits.invest.toFixed(2) + ' €';
         document.getElementById('limitSavings').innerText = data.limits.savings.toFixed(2) + ' €';
 
-        // Update User Breakdown remainders in Footers
-        const needsUB = data.activeUsers.map(u => `<b>${u.name}:</b> ${u.remNeedsCash.toFixed(2)}€`).join(' <span style="color:var(--text-muted);">|</span> ');
-        const wantsUB = data.activeUsers.map(u => `<b>${u.name}:</b> ${u.remWantsCash.toFixed(2)}€`).join(' <span style="color:var(--text-muted);">|</span> ');
-        document.getElementById('needsUserBreakdown').innerHTML = needsUB;
-        document.getElementById('wantsUserBreakdown').innerHTML = wantsUB;
+        const needsUB = data.activeUsers.map(u => `<b>${u.name}:</b> ${(u.remNeedsCash || 0).toFixed(2)}€`).join(' <span style="color:var(--text-muted);">|</span> ');
+        const wantsUB = data.activeUsers.map(u => `<b>${u.name}:</b> ${(u.remWantsCash || 0).toFixed(2)}€`).join(' <span style="color:var(--text-muted);">|</span> ');
+        
+        const needsUBContainer = document.getElementById('needsUserBreakdown');
+        if (needsUBContainer) needsUBContainer.innerHTML = needsUB;
+
+        const wantsUBContainer = document.getElementById('wantsUserBreakdown');
+        if (wantsUBContainer) wantsUBContainer.innerHTML = wantsUB;
 
         const needsBody = document.getElementById('needsTableBody');
         const wantsBody = document.getElementById('wantsTableBody');
@@ -368,8 +370,10 @@ class UIManager {
 
         const setRem = (id, val) => {
             const el = document.getElementById(id);
-            el.innerText = val.toFixed(2) + ' €';
-            el.style.color = val < 0 ? 'var(--danger)' : 'inherit';
+            if (el) {
+                el.innerText = val.toFixed(2) + ' €';
+                el.style.color = val < 0 ? 'var(--danger)' : 'inherit';
+            }
         };
 
         setRem('remNeedsCash', data.rem.needsCash);
@@ -379,13 +383,7 @@ class UIManager {
 
         this.handleExpenseFormUI(data);
         this.renderSmartFills();
-        
-        // Populate rollover selects
-        const pmOptions = state.paymentMethods.map(pm => `<option value="${pm.id}">${pm.name}</option>`).join('');
-        const rollNeeds = document.getElementById('rolloverNeedsPm');
-        const rollWants = document.getElementById('rolloverWantsPm');
-        if (rollNeeds && !rollNeeds.innerHTML.includes(pmOptions)) rollNeeds.innerHTML = pmOptions;
-        if (rollWants && !rollWants.innerHTML.includes(pmOptions)) rollWants.innerHTML = pmOptions;
+        SettlementsManager.populate(data, this.stateManager);
     }
 
     renderChart(data) {

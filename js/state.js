@@ -1,6 +1,6 @@
 class StateManager {
     constructor() {
-        this.storageKey = 'smart_budget_v14_data';
+        this.storageKey = 'smart_budget_v17_data';
         this.categoryData = {
             needs: [
                 { id: 'rent', label: 'Ενοίκιο' },
@@ -48,7 +48,7 @@ class StateManager {
         if (saved) {
             try { this.migrateAndSetState(JSON.parse(saved)); return; } catch (e) {}
         }
-        const olderKeys = ['smart_budget_v13_data', 'smart_budget_v12_data', 'smart_budget_v11_data'];
+        const olderKeys = ['smart_budget_v16_data', 'smart_budget_v15_data', 'smart_budget_v14_data', 'smart_budget_v13_data'];
         for (let key of olderKeys) {
             const olderSaved = localStorage.getItem(key);
             if (olderSaved) {
@@ -69,7 +69,7 @@ class StateManager {
         } else {
             data.paymentMethods.forEach(pm => { 
                 if (!pm.owner) pm.owner = 'u1'; 
-                if (pm.isPrimary === undefined) pm.isPrimary = true; // Make old accounts primary by default
+                if (pm.isPrimary === undefined) pm.isPrimary = true; 
             });
         }
         if (data.percentages.savings === undefined) data.percentages.savings = 0;
@@ -92,7 +92,16 @@ class StateManager {
     }
 
     clearExpenses() {
+        const rollovers = this.state.expenses.filter(ex => ex.name === 'Αποταμίευση Υπολοίπου (Μεταφορά)');
         this.state.expenses = [];
+        
+        rollovers.forEach(r => {
+            this.state.extraIncomes.push({
+                id: Date.now().toString() + Math.random().toString().slice(2,8),
+                name: `Μεταφορά υπολοίπου (${r.category === 'needs' ? 'Needs' : 'Wants'})`,
+                amount: r.amount
+            });
+        });
         this.save();
     }
 

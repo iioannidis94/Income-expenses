@@ -8,6 +8,8 @@ class BudgetCalculator {
         activeUsers.forEach(u => {
             u.ticketsNeeds = 0;
             u.ticketsWants = 0;
+            u.needsCashSpent = 0;
+            u.wantsCashSpent = 0;
             userMap[u.id] = u;
             totalCash += u.cash;
         });
@@ -47,6 +49,11 @@ class BudgetCalculator {
 
         const needsCashAllocated = limits.needs - needsTicketsTotal;
         const wantsCashAllocated = limits.wants - wantsTicketsTotal;
+        
+        activeUsers.forEach(u => {
+            u.needsCashAllocated = (u.totalIncome * pN) - u.ticketsNeeds;
+            u.wantsCashAllocated = (u.totalIncome * pW) - u.ticketsWants;
+        });
 
         let currentNeedsTickets = needsTicketsTotal;
         let currentWantsTickets = wantsTicketsTotal;
@@ -76,6 +83,12 @@ class BudgetCalculator {
                     if (!spentByMethod[ex.paymentMethod]) spentByMethod[ex.paymentMethod] = 0;
                     spentByMethod[ex.paymentMethod] += amountLeft;
                     totalNeedsCashSpent += amountLeft;
+                    
+                    if (ex.expenseOwner === 'joint') {
+                        activeUsers.forEach(u => u.needsCashSpent += amountLeft * u.incomeRatio);
+                    } else if (userMap[ex.expenseOwner]) {
+                        userMap[ex.expenseOwner].needsCashSpent += amountLeft;
+                    }
                 }
             } else if (ex.category === 'wants') {
                 if (ex.isTicket && currentWantsTickets > 0) {
@@ -88,6 +101,12 @@ class BudgetCalculator {
                     if (!spentByMethod[ex.paymentMethod]) spentByMethod[ex.paymentMethod] = 0;
                     spentByMethod[ex.paymentMethod] += amountLeft;
                     totalWantsCashSpent += amountLeft;
+                    
+                    if (ex.expenseOwner === 'joint') {
+                        activeUsers.forEach(u => u.wantsCashSpent += amountLeft * u.incomeRatio);
+                    } else if (userMap[ex.expenseOwner]) {
+                        userMap[ex.expenseOwner].wantsCashSpent += amountLeft;
+                    }
                 }
             }
             expenseBreakdown[ex.id] = b;
@@ -102,8 +121,13 @@ class BudgetCalculator {
                 });
             }
         });
+        
+        activeUsers.forEach(u => {
+            u.remNeedsCash = u.needsCashAllocated - u.needsCashSpent;
+            u.remWantsCash = u.wantsCashAllocated - u.wantsCashSpent;
+        });
 
-        // 1. Settlements (Inter-user debts)
+        // 1. Settlements
         let userBalances = {};
         activeUsers.forEach(u => userBalances[u.id] = 0);
 
@@ -122,7 +146,7 @@ class BudgetCalculator {
             }
         });
 
-        // 2. Account Replenishments (Secondary -> Primary transfer suggestions)
+        // 2. Account Replenishments
         let replenishments = [];
         state.paymentMethods.forEach(pm => {
             if (!pm.isPrimary && spentByMethod[pm.id] > 0) {

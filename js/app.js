@@ -243,7 +243,7 @@ class MainApp {
         }
     }
     
-    // --- ROLLOVER FUNCTIONALITY ---
+    // Rollover
     rolloverCategory(category) {
         const data = BudgetCalculator.calculate(this.stateManager);
         const remCash = category === 'needs' ? data.rem.needsCash : data.rem.wantsCash;
@@ -312,7 +312,7 @@ class MainApp {
         const url = URL.createObjectURL(blob);
         const a = document.createElement('a');
         a.href = url;
-        a.download = `smart_budget_backup_v16_${new Date().toISOString().slice(0, 10)}.json`;
+        a.download = `smart_budget_backup_v17_${new Date().toISOString().slice(0, 10)}.json`;
         document.body.appendChild(a);
         a.click();
         document.body.removeChild(a);

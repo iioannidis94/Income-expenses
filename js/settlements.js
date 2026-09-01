@@ -1,6 +1,5 @@
 class SettlementsManager {
     static populate(data, stateManager) {
-        // --- 1. SETTLEMENTS (DEBTS) ---
         const container = document.getElementById('settlementsBody');
         const balances = data.settlements;
         let debtors = [];
@@ -22,7 +21,6 @@ class SettlementsManager {
                 let creditor = creditors[c];
                 let amountToTransfer = Math.min(debtor.amount, creditor.amount);
 
-                // Prefer a primary account of the creditor if possible
                 const prefPm = stateManager.state.paymentMethods.find(pm => pm.owner === creditor.id && pm.isPrimary);
                 const destName = prefPm ? `στην/στον [${prefPm.name}] του ` : 'στον ';
 
@@ -42,7 +40,6 @@ class SettlementsManager {
             container.innerHTML = transfersHtml;
         }
 
-        // --- 2. ACCOUNT REPLENISHMENTS ---
         const repContainer = document.getElementById('replenishmentsBody');
         const reps = data.replenishments;
         if (reps.length === 0) {
