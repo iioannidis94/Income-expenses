@@ -125,6 +125,13 @@ class UIManager {
             </div>
             `;
         }).join('');
+        
+        // Also update rollover selects
+        const pmOptions = this.stateManager.state.paymentMethods.map(pm => `<option value="${pm.id}">${pm.name}</option>`).join('');
+        const rollNeeds = document.getElementById('rolloverNeedsPm');
+        const rollWants = document.getElementById('rolloverWantsPm');
+        if (rollNeeds) rollNeeds.innerHTML = pmOptions;
+        if (rollWants) rollWants.innerHTML = pmOptions;
     }
 
     renderTickets() {
@@ -212,7 +219,6 @@ class UIManager {
         document.getElementById('expName').value = ex.name;
         document.getElementById('expCategory').value = ex.category;
         
-        // Ensure subcategory renders correctly
         this.handleExpenseFormUI();
         
         document.getElementById('expSubCategory').value = ex.subCategory;
@@ -221,12 +227,10 @@ class UIManager {
         document.getElementById('expOwner').value = ex.expenseOwner;
         document.getElementById('expIsTicket').checked = ex.isTicket;
 
-        // Modify button
         document.getElementById('expenseSubmitBtn').innerText = 'Αποθήκευση Αλλαγών';
         document.getElementById('expenseCancelBtn').style.display = 'inline-block';
         document.getElementById('expenseFormTitle').innerText = 'Επεξεργασία Εξόδου';
         
-        // Scroll to form
         document.getElementById('expenseFormSection').scrollIntoView({ behavior: 'smooth' });
     }
 
@@ -304,6 +308,12 @@ class UIManager {
         document.getElementById('limitInvest').innerText = data.limits.invest.toFixed(2) + ' €';
         document.getElementById('limitSavings').innerText = data.limits.savings.toFixed(2) + ' €';
 
+        // Update User Breakdown remainders in Footers
+        const needsUB = data.activeUsers.map(u => `<b>${u.name}:</b> ${u.remNeedsCash.toFixed(2)}€`).join(' <span style="color:var(--text-muted);">|</span> ');
+        const wantsUB = data.activeUsers.map(u => `<b>${u.name}:</b> ${u.remWantsCash.toFixed(2)}€`).join(' <span style="color:var(--text-muted);">|</span> ');
+        document.getElementById('needsUserBreakdown').innerHTML = needsUB;
+        document.getElementById('wantsUserBreakdown').innerHTML = wantsUB;
+
         const needsBody = document.getElementById('needsTableBody');
         const wantsBody = document.getElementById('wantsTableBody');
         needsBody.innerHTML = '';
@@ -369,7 +379,13 @@ class UIManager {
 
         this.handleExpenseFormUI(data);
         this.renderSmartFills();
-        SettlementsManager.populate(data, this.stateManager);
+        
+        // Populate rollover selects
+        const pmOptions = state.paymentMethods.map(pm => `<option value="${pm.id}">${pm.name}</option>`).join('');
+        const rollNeeds = document.getElementById('rolloverNeedsPm');
+        const rollWants = document.getElementById('rolloverWantsPm');
+        if (rollNeeds && !rollNeeds.innerHTML.includes(pmOptions)) rollNeeds.innerHTML = pmOptions;
+        if (rollWants && !rollWants.innerHTML.includes(pmOptions)) rollWants.innerHTML = pmOptions;
     }
 
     renderChart(data) {

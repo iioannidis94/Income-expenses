@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Smart Budget Planner V15</title>
+    <title>Smart Budget Planner V16</title>
     <link rel="stylesheet" href="css/style.css">
     <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
 </head>
@@ -11,8 +11,8 @@
 
 <div class="container">
     <header>
-        <h1>Smart Budget Planner <span style="font-size: 1rem; color: var(--primary);">V15</span></h1>
-        <p>Επεξεργασία Λογαριασμών (Toggle Βασικού), Ταξινόμηση & Εκκαθάριση (Dark Mode)</p>
+        <h1>Smart Budget Planner <span style="font-size: 1rem; color: var(--primary);">V16</span></h1>
+        <p>Υπόλοιπα ανά Χρήστη & Έξυπνη Αποθήκευση/Μεταφορά Υπολοίπων στον Επόμενο Μήνα</p>
         <div class="header-actions" style="flex-wrap: wrap;">
             <button class="btn-secondary btn-small" onclick="App.exportData()">💾 Εξαγωγή (JSON)</button>
             <label class="btn-secondary btn-small" style="cursor:pointer;">
@@ -293,14 +293,29 @@
                     <tbody id="needsTableBody"></tbody>
                 </table>
             </div>
+            
+            <!-- NEW FOOTER FOR NEEDS WITH PER-USER BALANCE & ROLLOVER -->
             <div class="summary-footer" style="flex-direction: column; gap: 8px;">
-                <div class="row w-100 justify-content-between">
-                    <span>Υπόλοιπο (Όλοι οι λογαριασμοί):</span>
-                    <span id="remNeedsCash">0.00 €</span>
+                <div class="row w-100 justify-content-between align-items-center">
+                    <span style="font-weight: bold;">Συνολικό Υπόλοιπο:</span>
+                    <span id="remNeedsCash" style="font-size: 1.1rem; font-weight: bold;">0.00 €</span>
                 </div>
-                <div class="row w-100 justify-content-between">
+                
+                <div id="needsUserBreakdown" style="font-size: 0.85rem; color: var(--needs-color); padding-left: 5px; border-left: 2px solid var(--border);">
+                   <!-- Dynamic per user breakdown -->
+                </div>
+                
+                <div class="row w-100 justify-content-between mt-10">
                     <span style="color: var(--wants-color);">Υπόλοιπο Tickets (Needs):</span>
                     <span id="remNeedsTickets" style="color: var(--wants-color);">0.00 €</span>
+                </div>
+                
+                <div class="row w-100 justify-content-between align-items-center mt-10" style="border-top: 1px solid var(--border); padding-top: 12px; flex-wrap: wrap; gap: 10px;">
+                    <span style="font-size: 0.9rem; color: var(--invest-color);">Αποθήκευση υπολοίπου για τον επόμενο μήνα:</span>
+                    <div style="display: flex; gap: 8px; flex-wrap: wrap;">
+                        <select id="rolloverNeedsPm" class="btn-small" style="background: var(--bg-color); color: var(--text-main); border: 1px solid var(--border); border-radius: 6px;"></select>
+                        <button class="btn-secondary btn-small" style="background: var(--invest-color); color: white;" onclick="App.rolloverCategory('needs')">Αποταμίευση</button>
+                    </div>
                 </div>
             </div>
         </section>
@@ -333,14 +348,29 @@
                     <tbody id="wantsTableBody"></tbody>
                 </table>
             </div>
+            
+            <!-- NEW FOOTER FOR WANTS WITH PER-USER BALANCE & ROLLOVER -->
             <div class="summary-footer" style="flex-direction: column; gap: 8px;">
-                <div class="row w-100 justify-content-between">
-                    <span>Υπόλοιπο (Όλοι οι λογαριασμοί):</span>
-                    <span id="remWantsCash">0.00 €</span>
+                <div class="row w-100 justify-content-between align-items-center">
+                    <span style="font-weight: bold;">Συνολικό Υπόλοιπο:</span>
+                    <span id="remWantsCash" style="font-size: 1.1rem; font-weight: bold;">0.00 €</span>
                 </div>
-                <div class="row w-100 justify-content-between">
+                
+                <div id="wantsUserBreakdown" style="font-size: 0.85rem; color: var(--wants-color); padding-left: 5px; border-left: 2px solid var(--border);">
+                   <!-- Dynamic per user breakdown -->
+                </div>
+                
+                <div class="row w-100 justify-content-between mt-10">
                     <span style="color: var(--wants-color);">Υπόλοιπο Tickets (Wants):</span>
                     <span id="remWantsTickets" style="color: var(--wants-color);">0.00 €</span>
+                </div>
+                
+                <div class="row w-100 justify-content-between align-items-center mt-10" style="border-top: 1px solid var(--border); padding-top: 12px; flex-wrap: wrap; gap: 10px;">
+                    <span style="font-size: 0.9rem; color: var(--invest-color);">Αποθήκευση υπολοίπου για τον επόμενο μήνα:</span>
+                    <div style="display: flex; gap: 8px; flex-wrap: wrap;">
+                        <select id="rolloverWantsPm" class="btn-small" style="background: var(--bg-color); color: var(--text-main); border: 1px solid var(--border); border-radius: 6px;"></select>
+                        <button class="btn-secondary btn-small" style="background: var(--invest-color); color: white;" onclick="App.rolloverCategory('wants')">Αποταμίευση</button>
+                    </div>
                 </div>
             </div>
         </section>

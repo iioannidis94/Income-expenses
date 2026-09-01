@@ -1,3 +1,4 @@
+
 :root {
     --primary: #6366f1;
     --primary-hover: #4f46e5;
@@ -169,6 +170,7 @@ th { color: var(--text-muted); font-weight: 600; background: #0f172a; }
 .badge-owner { background: rgba(255, 255, 255, 0.1); color: var(--text-muted); border: 1px solid var(--border); font-size: 0.65rem;}
 .badge-cash { background: var(--pay-cash-bg); color: var(--pay-cash-text); border: 1px solid var(--pay-cash-border); }
 .badge-card { background: var(--pay-card-bg); color: var(--pay-card-text); border: 1px solid var(--pay-card-border); }
+.badge-primary { background: rgba(99,102,241,0.2); color: var(--primary); border: 1px solid var(--primary); font-size: 0.65rem; margin-left: 5px;}
 
 .amount-main { font-weight: bold; font-size: 1rem; }
 .btn-delete { background: rgba(248, 113, 113, 0.1); color: var(--danger); padding: 6px 10px; border-radius: 6px; border: 1px solid rgba(248, 113, 113, 0.2);}

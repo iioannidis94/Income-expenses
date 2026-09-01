@@ -126,7 +126,7 @@ class MainApp {
             isPrimary: isPrimary
         });
         nameInput.value = '';
-        document.getElementById('newPmPrimary').checked = true; // reset to default
+        document.getElementById('newPmPrimary').checked = true; // reset
         this.stateManager.save();
         this.ui.renderPaymentMethods();
         this.handleExpenseFormUI();
@@ -243,6 +243,35 @@ class MainApp {
         }
     }
     
+    // --- ROLLOVER FUNCTIONALITY ---
+    rolloverCategory(category) {
+        const data = BudgetCalculator.calculate(this.stateManager);
+        const remCash = category === 'needs' ? data.rem.needsCash : data.rem.wantsCash;
+        
+        if (remCash <= 0) {
+            alert("Δεν υπάρχει διαθέσιμο υπόλοιπο προς αποταμίευση.");
+            return;
+        }
+
+        const pmId = document.getElementById(category === 'needs' ? 'rolloverNeedsPm' : 'rolloverWantsPm').value;
+        if (!pmId) { alert('Επιλέξτε λογαριασμό!'); return; }
+        
+        this.stateManager.state.expenses.push({
+            id: Date.now().toString(),
+            timestamp: Date.now(),
+            name: 'Αποταμίευση Υπολοίπου (Μεταφορά)',
+            category: category,
+            subCategory: category === 'needs' ? 'other_need' : 'other_want',
+            amount: parseFloat(remCash.toFixed(2)),
+            isTicket: false,
+            paymentMethod: pmId,
+            expenseOwner: 'joint'
+        });
+
+        this.stateManager.save();
+        this.refresh();
+    }
+
     renderDashboard() {
         this.refresh();
     }
@@ -257,6 +286,8 @@ class MainApp {
         document.getElementById('chartModal').style.display = 'none';
     }
     openSettlementsModal() {
+        const data = BudgetCalculator.calculate(this.stateManager);
+        SettlementsManager.populate(data, this.stateManager);
         document.getElementById('settlementsModal').style.display = 'flex';
     }
     closeSettlementsModal() {
@@ -265,10 +296,12 @@ class MainApp {
 
     // Month Clear
     clearMonth() {
-        if (confirm("Είστε σίγουροι; Θα διαγραφούν ΟΛΑ τα έξοδα του τρέχοντος μήνα!")) {
+        if (confirm("Είστε σίγουροι; Θα διαγραφούν τα έξοδα του τρέχοντος μήνα. 
+
+Αν είχατε κάνει 'Αποταμίευση Υπολοίπου', θα μεταφερθεί ως Έξτρα Έσοδο για το νέο μήνα!")) {
             this.stateManager.clearExpenses();
             this.cancelEdit();
-            this.refresh();
+            this.init(); // Need full init to redraw extra incomes
         }
     }
 
@@ -279,7 +312,7 @@ class MainApp {
         const url = URL.createObjectURL(blob);
         const a = document.createElement('a');
         a.href = url;
-        a.download = `smart_budget_backup_v15_${new Date().toISOString().slice(0, 10)}.json`;
+        a.download = `smart_budget_backup_v16_${new Date().toISOString().slice(0, 10)}.json`;
         document.body.appendChild(a);
         a.click();
         document.body.removeChild(a);
