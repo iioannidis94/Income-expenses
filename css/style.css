@@ -9,9 +9,13 @@
     --text-main: #f8fafc;
     --text-muted: #94a3b8;
     --border: #334155;
+    
+    /* CATEGORY COLORS */
     --needs-color: #38bdf8;
     --wants-color: #34d399;
     --invest-color: #a78bfa;
+    --savings-color: #f59e0b; /* NEW: Savings Color */
+    
     --danger: #f87171;
     --warning-bg: rgba(248, 113, 113, 0.1);
     --warning-text: #f87171;
@@ -154,13 +158,14 @@ button:hover { background-color: var(--primary-hover); opacity: 0.9; }
 .chip-cash { background: var(--pay-cash-bg); color: var(--pay-cash-text); border-color: var(--pay-cash-border); }
 .chip-card { background: var(--pay-card-bg); color: var(--pay-card-text); border-color: var(--pay-card-border); }
 
-.stats-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 12px; }
+.stats-grid { display: grid; grid-template-columns: repeat(4, 1fr); gap: 12px; }
 .stat-card { background: #0f172a; padding: 12px; border-radius: 8px; text-align: center; border: 1px solid var(--border); }
 .stat-card h4 { margin: 0 0 8px 0; font-size: 0.8rem; text-transform: uppercase; }
 .stat-card .amount { font-size: 1.25rem; font-weight: bold; line-height: 1.4; }
 .stat-card.needs h4 { color: var(--needs-color); }
 .stat-card.wants h4 { color: var(--wants-color); }
 .stat-card.invest h4 { color: var(--invest-color); }
+.stat-card.savings h4 { color: var(--savings-color); } /* SAVINGS COLOR */
 
 /* Checkbox */
 .checkbox-container { display: flex; align-items: center; cursor: pointer; font-size: 0.9rem; font-weight: normal; text-transform: none; color: var(--text-main); flex-wrap: wrap; }
@@ -190,3 +195,20 @@ th { color: var(--text-muted); font-weight: 600; background: #0f172a; }
 .btn-delete:hover { background: var(--danger); color: white; }
 
 .summary-footer { display: flex; justify-content: space-between; background: #0f172a; padding: 15px; border-radius: 8px; font-weight: bold; border: 1px solid var(--border); }
+
+/* MODAL STYLES */
+.modal-overlay { 
+    position: fixed; top: 0; left: 0; width: 100%; height: 100%; 
+    background: rgba(0,0,0,0.8); z-index: 1000; 
+    display: flex; align-items: center; justify-content: center; 
+}
+.modal-content { 
+    background: var(--card-bg); width: 95%; max-width: 600px; 
+    padding: 24px; border-radius: 12px; position: relative; 
+    border: 1px solid var(--border); box-shadow: 0 20px 25px -5px rgba(0, 0, 0, 0.5);
+}
+.close-btn { 
+    position: absolute; top: 15px; right: 20px; font-size: 28px; 
+    cursor: pointer; color: var(--text-muted); transition: 0.2s;
+}
+.close-btn:hover { color: var(--danger); }

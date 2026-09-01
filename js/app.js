@@ -1,6 +1,6 @@
 class BudgetApp {
     constructor() {
-        this.storageKey = 'smart_budget_v9_data';
+        this.storageKey = 'smart_budget_v10_data';
         
         this.state = {
             users: {
@@ -9,13 +9,13 @@ class BudgetApp {
             },
             extraUsers: [], 
             extraIncomes: [], 
-            tickets: [], // {id, name, amount, target: 'needs' | 'wants', owner: 'u1' | 'u2' | 'u_...'}
+            tickets: [], 
             paymentMethods: [
                 {id: 'pm_cash', name: 'Βασικά Μετρητά', type: 'cash'},
                 {id: 'pm_card', name: 'Βασική Κάρτα', type: 'card'}
             ],
-            percentages: { needs: 50, wants: 30, invest: 20 },
-            expenses: [] // {id, name, category, subCategory, amount, isTicket, paymentMethod: 'pm_...'}
+            percentages: { needs: 50, wants: 30, invest: 10, savings: 10 },
+            expenses: []
         };
 
         this.categoryData = {
@@ -41,6 +41,8 @@ class BudgetApp {
         this.categoryData.needs.forEach(item => { this.subCategoryMap[item.id] = item.label; });
         this.categoryData.wants.forEach(item => { this.subCategoryMap[item.id] = item.label; });
 
+        this.chartInstance = null; // Store chart object
+
         this.loadState();
         this.fullRender();
     }
@@ -65,7 +67,7 @@ class BudgetApp {
         }
         
         // Fallback to older versions
-        const olderKeys = ['smart_budget_v8_data', 'smart_budget_v7_data', 'smart_budget_v6_data'];
+        const olderKeys = ['smart_budget_v9_data', 'smart_budget_v8_data', 'smart_budget_v7_data'];
         for (let key of olderKeys) {
             const olderSaved = localStorage.getItem(key);
             if (olderSaved) {
@@ -84,6 +86,9 @@ class BudgetApp {
                 {id: 'pm_card', name: 'Βασική Κάρτα', type: 'card'}
             ];
         }
+        if (data.percentages.savings === undefined) {
+            data.percentages.savings = 0; // Legacy migration
+        }
         
         data.tickets.forEach(t => {
             if (!t.owner) t.owner = 'u1';
@@ -95,7 +100,6 @@ class BudgetApp {
                     e.isTicket = e.useVoucher;
                     delete e.useVoucher;
                 }
-                // V9 migration: update old 'cash'/'card' strings to exact PM IDs
                 if (!e.paymentMethod) e.paymentMethod = 'pm_cash';
                 if (e.paymentMethod === 'cash') e.paymentMethod = 'pm_cash';
                 if (e.paymentMethod === 'card') e.paymentMethod = 'pm_card';
@@ -127,6 +131,7 @@ class BudgetApp {
         document.getElementById('percNeeds').value = this.state.percentages.needs;
         document.getElementById('percWants').value = this.state.percentages.wants;
         document.getElementById('percInvest').value = this.state.percentages.invest;
+        document.getElementById('percSavings').value = this.state.percentages.savings;
 
         this.toggleUser2(this.state.users.u2.active, true);
         
@@ -152,9 +157,10 @@ class BudgetApp {
         const pN = parseFloat(document.getElementById('percNeeds').value) || 0;
         const pW = parseFloat(document.getElementById('percWants').value) || 0;
         const pI = parseFloat(document.getElementById('percInvest').value) || 0;
-        this.state.percentages = { needs: pN, wants: pW, invest: pI };
+        const pS = parseFloat(document.getElementById('percSavings').value) || 0;
+        this.state.percentages = { needs: pN, wants: pW, invest: pI, savings: pS };
 
-        document.getElementById('percentageError').style.display = (pN + pW + pI !== 100) ? 'block' : 'none';
+        document.getElementById('percentageError').style.display = (pN + pW + pI + pS !== 100) ? 'block' : 'none';
 
         this.saveState();
         this.renderTickets();
@@ -236,11 +242,10 @@ class BudgetApp {
         nameInput.value = '';
         this.saveState();
         this.renderPaymentMethods();
-        this.handleExpenseFormUI(); // update dropdown
+        this.handleExpenseFormUI();
     }
     
     removePaymentMethod(id) {
-        // Prevent deleting if it's the only one left to avoid breaking the form
         if (this.state.paymentMethods.length <= 1) {
             alert("Πρέπει να υπάρχει τουλάχιστον ένας λογαριασμός πληρωμής!");
             return;
@@ -275,7 +280,7 @@ class BudgetApp {
             pm.name = newName.trim();
             this.saveState();
             this.handleExpenseFormUI();
-            this.renderDashboard(); // refresh badges
+            this.renderDashboard();
         }
     }
 
@@ -397,13 +402,11 @@ class BudgetApp {
             subCatSelect.dataset.currentCat = cat;
         }
         
-        // Populate Payment Methods dropdown
         const currentPmValue = pmSelect.value;
         pmSelect.innerHTML = this.state.paymentMethods.map(pm => {
             return `<option value="${pm.id}">${pm.name} (${pm.type === 'cash' ? 'Μετρητά' : 'Κάρτα'})</option>`;
         }).join('');
         
-        // Restore selection if it still exists
         if (currentPmValue && this.state.paymentMethods.find(pm => pm.id === currentPmValue)) {
             pmSelect.value = currentPmValue;
         }
@@ -452,7 +455,7 @@ class BudgetApp {
         this.renderDashboard();
     }
 
-    // --- Core Math (V9 Overflow Logic) ---
+    // --- Core Math ---
     calculateTotals() {
         const activeUsers = this.getActiveUsers();
         let userMap = {};
@@ -462,7 +465,6 @@ class BudgetApp {
             userMap[u.id] = u;
         });
 
-        // Sum tickets
         let needsTicketsTotal = 0;
         let wantsTicketsTotal = 0;
 
@@ -489,17 +491,18 @@ class BudgetApp {
         const pN = this.state.percentages.needs / 100;
         const pW = this.state.percentages.wants / 100;
         const pI = this.state.percentages.invest / 100;
+        const pS = this.state.percentages.savings / 100; // SAVINGS
 
         const limits = {
             needs: totalIncome * pN,
             wants: totalIncome * pW,
-            invest: totalIncome * pI
+            invest: totalIncome * pI,
+            savings: totalIncome * pS
         };
 
         const needsCashAllocated = limits.needs - needsTicketsTotal;
         const wantsCashAllocated = limits.wants - wantsTicketsTotal;
 
-        // --- Overflow Logic for Expenses ---
         let currentNeedsTickets = needsTicketsTotal;
         let currentWantsTickets = wantsTicketsTotal;
 
@@ -553,6 +556,10 @@ class BudgetApp {
                 needsTickets: currentNeedsTickets,
                 wantsCash: wantsCashAllocated - totalWantsCashSpent,
                 wantsTickets: currentWantsTickets
+            },
+            spentAgg: {
+                needs: totalNeedsCashSpent + (needsTicketsTotal - currentNeedsTickets),
+                wants: totalWantsCashSpent + (wantsTicketsTotal - currentWantsTickets)
             }
         };
     }
@@ -561,10 +568,10 @@ class BudgetApp {
     renderDashboard() {
         const data = this.calculateTotals();
 
-        // 1. User Breakdown Table
         const pN = this.state.percentages.needs / 100;
         const pW = this.state.percentages.wants / 100;
         const pI = this.state.percentages.invest / 100;
+        const pS = this.state.percentages.savings / 100;
 
         const formatCell = (totalAlloc, ticketValue) => {
             const cashOwed = totalAlloc - ticketValue;
@@ -581,14 +588,13 @@ class BudgetApp {
                 <td>${formatCell(u.totalIncome * pN, u.ticketsNeeds)}</td>
                 <td>${formatCell(u.totalIncome * pW, u.ticketsWants)}</td>
                 <td>${formatCell(u.totalIncome * pI, 0)}</td>
+                <td>${formatCell(u.totalIncome * pS, 0)}</td>
             </tr>
         `).join('');
         document.getElementById('userBreakdownBody').innerHTML = breakdownHTML;
 
-        // 2. Summary Dashboard limits
         document.getElementById('totalIncomeDisplay').innerText = data.totalIncome.toFixed(2) + ' €';
         
-        // Render Payment Chips based on custom methods
         const chipsHtml = this.state.paymentMethods.map(pm => {
             const spent = data.spentByMethod[pm.id] || 0;
             if (spent === 0) return '';
@@ -601,8 +607,8 @@ class BudgetApp {
         document.getElementById('limitNeeds').innerHTML = `${data.limits.needs.toFixed(2)}€ <br><small style="font-size:0.75rem; font-weight:normal;">Cash/Card: ${data.needsCashAllocated.toFixed(2)}€ | Tickets: ${data.needsTicketsTotal.toFixed(2)}€</small>`;
         document.getElementById('limitWants').innerHTML = `${data.limits.wants.toFixed(2)}€ <br><small style="font-size:0.75rem; font-weight:normal;">Cash/Card: ${data.wantsCashAllocated.toFixed(2)}€ | Tickets: ${data.wantsTicketsTotal.toFixed(2)}€</small>`;
         document.getElementById('limitInvest').innerText = data.limits.invest.toFixed(2) + ' €';
+        document.getElementById('limitSavings').innerText = data.limits.savings.toFixed(2) + ' €';
 
-        // 3. Expense Tables
         const needsBody = document.getElementById('needsTableBody');
         const wantsBody = document.getElementById('wantsTableBody');
         needsBody.innerHTML = '';
@@ -612,7 +618,6 @@ class BudgetApp {
             const tr = document.createElement('tr');
             const subStr = this.subCategoryMap[ex.subCategory] || 'Άλλο';
             
-            // Generate Badges
             const breakdown = data.expenseBreakdown[ex.id];
             let badgesHTML = '';
             
@@ -646,7 +651,6 @@ class BudgetApp {
             else wantsBody.appendChild(tr);
         });
 
-        // 4. Remainders
         const setRem = (id, val) => {
             const el = document.getElementById(id);
             el.innerText = val.toFixed(2) + ' €';
@@ -658,7 +662,67 @@ class BudgetApp {
         setRem('remWantsCash', data.rem.wantsCash);
         setRem('remWantsTickets', data.rem.wantsTickets);
 
-        this.handleExpenseFormUI(); // Ensure ticket checkbox sync
+        this.handleExpenseFormUI();
+    }
+
+    // --- Modal Chart Feature ---
+    openChartModal() {
+        document.getElementById('chartModal').style.display = 'flex';
+        this.renderChart();
+    }
+    
+    closeChartModal() {
+        document.getElementById('chartModal').style.display = 'none';
+    }
+
+    renderChart() {
+        const ctx = document.getElementById('budgetChart').getContext('2d');
+        const data = this.calculateTotals();
+        
+        if (this.chartInstance) {
+            this.chartInstance.destroy();
+        }
+
+        const needsSpent = data.spentAgg.needs;
+        const needsRem = Math.max(0, data.limits.needs - needsSpent);
+        const wantsSpent = data.spentAgg.wants;
+        const wantsRem = Math.max(0, data.limits.wants - wantsSpent);
+
+        this.chartInstance = new Chart(ctx, {
+            type: 'doughnut',
+            data: {
+                labels: [
+                    'Needs (Ξοδεύτηκαν)', 'Needs (Υπόλοιπο)',
+                    'Wants (Ξοδεύτηκαν)', 'Wants (Υπόλοιπο)',
+                    'Invest (Διαθέσιμο)', 'Savings (Διαθέσιμο)'
+                ],
+                datasets: [{
+                    data: [
+                        needsSpent, needsRem,
+                        wantsSpent, wantsRem,
+                        data.limits.invest, data.limits.savings
+                    ],
+                    backgroundColor: [
+                        '#0284c7', '#bae6fd', // Needs
+                        '#059669', '#a7f3d0', // Wants
+                        '#8b5cf6',            // Invest
+                        '#f59e0b'             // Savings
+                    ],
+                    borderWidth: 1,
+                    borderColor: '#1e293b'
+                }]
+            },
+            options: {
+                responsive: true,
+                maintainAspectRatio: false,
+                plugins: {
+                    legend: {
+                        position: 'bottom',
+                        labels: { color: '#f8fafc' }
+                    }
+                }
+            }
+        });
     }
 
     // --- JSON Backup & Restore ---
@@ -669,7 +733,7 @@ class BudgetApp {
         
         const a = document.createElement('a');
         a.href = url;
-        a.download = `smart_budget_backup_v9_${new Date().toISOString().slice(0,10)}.json`;
+        a.download = `smart_budget_backup_v10_${new Date().toISOString().slice(0,10)}.json`;
         document.body.appendChild(a);
         a.click();
         
