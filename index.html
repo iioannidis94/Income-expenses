@@ -1,0 +1,138 @@
+<!DOCTYPE html>
+<html lang="el">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Smart Budget Planner - 50/30/20</title>
+    <link rel="stylesheet" href="css/style.css">
+</head>
+<body>
+
+<div class="container">
+    <header>
+        <h1>Smart Budget Planner</h1>
+        <p>Κατανομή Εσόδων & Διαχείριση Εξόδων (50/30/20)</p>
+    </header>
+
+    <!-- 1. ΕΣΟΔΑ & ΚΑΤΑΝΟΜΗ -->
+    <section class="card">
+        <h2>1. Έσοδα & Στρατηγική Κατανομή</h2>
+        <div class="grid-2">
+            <div>
+                <div class="form-group">
+                    <label for="income1">Τα Έσοδα Σου (€)</label>
+                    <input type="number" id="income1" value="1483" oninput="App.handleIncomeChange()">
+                </div>
+                <div class="form-group">
+                    <label for="income2">Έσοδα Κοπέλας (€)</label>
+                    <input type="number" id="income2" value="1475" oninput="App.handleIncomeChange()">
+                </div>
+                <div class="form-group">
+                    <label for="income3">Ticket / Extra (€)</label>
+                    <input type="number" id="income3" value="100" oninput="App.handleIncomeChange()">
+                </div>
+            </div>
+            <div>
+                <h3>Συνολικό Budget: <span id="totalIncomeDisplay" style="color: var(--primary);">0</span> €</h3>
+                <div class="stats-grid">
+                    <div class="stat-card needs">
+                        <h4>Needs (50%)</h4>
+                        <div class="amount" id="limitNeeds">0€</div>
+                    </div>
+                    <div class="stat-card wants">
+                        <h4>Wants (30%)</h4>
+                        <div class="amount" id="limitWants">0€</div>
+                    </div>
+                    <div class="stat-card invest">
+                        <h4>Invest (20%)</h4>
+                        <div class="amount" id="limitInvest">0€</div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <!-- 2. ΦΟΡΜΑ ΠΡΟΣΘΗΚΗΣ ΕΞΟΔΩΝ -->
+    <section class="card">
+        <h2>2. Καταχώρηση Νέου Εξόδου</h2>
+        <form id="expenseForm" onsubmit="App.handleFormSubmit(event)">
+            <div class="grid-2">
+                <div class="form-group">
+                    <label for="expenseName">Ονομασία (π.χ. Ενοίκιο, Supermarket)</label>
+                    <input type="text" id="expenseName" placeholder="Εισάγετε όνομα..." required>
+                </div>
+                <div class="form-group">
+                    <label for="expenseCategory">Κατηγορία</label>
+                    <select id="expenseCategory">
+                        <option value="needs">Needs (Ανάγκες)</option>
+                        <option value="wants">Wants (Επιθυμίες)</option>
+                    </select>
+                </div>
+            </div>
+            <div class="form-group">
+                <label for="expenseAmount">Κόστος (€)</label>
+                <input type="number" id="expenseAmount" step="0.01" placeholder="0.00" required>
+            </div>
+            <button type="submit">Προσθήκη Εξόδου</button>
+        </form>
+    </section>
+
+    <!-- 3. ΠΙΝΑΚΕΣ ΔΙΑΧΕΙΡΙΣΗΣ -->
+    <div class="grid-2">
+        <!-- NEEDS TABLE -->
+        <section class="card">
+            <h3>Needs (Ανάγκες)</h3>
+            <div style="overflow-x: auto;">
+                <table>
+                    <thead>
+                        <tr>
+                            <th>Όνομα</th>
+                            <th>Ποσό</th>
+                            <th>Ενέργεια</th>
+                        </tr>
+                    </thead>
+                    <tbody id="needsTableBody">
+                        <!-- Dynamic Content -->
+                    </tbody>
+                </table>
+            </div>
+            <div class="summary-footer">
+                <span>Υπόλοιπο Needs:</span>
+                <span id="remainingNeeds">0.00 €</span>
+            </div>
+        </section>
+
+        <!-- WANTS TABLE -->
+        <section class="card">
+            <h3>Wants (Επιθυμίες)</h3>
+            <div style="overflow-x: auto;">
+                <table>
+                    <thead>
+                        <tr>
+                            <th>Όνομα</th>
+                            <th>Ποσό</th>
+                            <th>Ενέργεια</th>
+                        </tr>
+                    </thead>
+                    <tbody id="wantsTableBody">
+                        <!-- Dynamic Content -->
+                    </tbody>
+                </table>
+            </div>
+            <div class="summary-footer">
+                <span>Υπόλοιπο Wants:</span>
+                <span id="remainingWants">0.00 €</span>
+            </div>
+        </section>
+    </div>
+
+    <!-- INVEST SECTION -->
+    <section class="card">
+        <h3>Invest / Savings (20%)</h3>
+        <p>Τα χρήματα αυτά κατευθύνονται αυτόματα σε επενδύσεις ή αποταμίευση: <strong id="valInvest" style="color: var(--invest-color);">0.00 €</strong></p>
+    </section>
+</div>
+
+<script src="js/app.js"></script>
+</body>
+</html>
