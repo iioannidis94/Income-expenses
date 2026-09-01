@@ -3,15 +3,15 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Smart Budget Planner V7</title>
+    <title>Smart Budget Planner V8</title>
     <link rel="stylesheet" href="css/style.css">
 </head>
 <body>
 
 <div class="container">
     <header>
-        <h1>Smart Budget Planner <span style="font-size: 1rem; color: var(--primary);">V7</span></h1>
-        <p>Απεριόριστοι Χρήστες & Ακριβής Διαμοιρασμός (Dark Mode & Backup)</p>
+        <h1>Smart Budget Planner <span style="font-size: 1rem; color: var(--primary);">V8</span></h1>
+        <p>Έξυπνο Overflow Tickets & Tracking Μετρητών/Κάρτας (Dark Mode & Backup)</p>
         <div class="header-actions">
             <button class="btn-secondary btn-small" onclick="App.exportData()">💾 Εξαγωγή (JSON)</button>
             <label class="btn-secondary btn-small" style="cursor:pointer;">
@@ -56,7 +56,6 @@
                 
                 <button id="addUser2Btn" class="btn-secondary btn-small mt-10" onclick="App.toggleUser2(true)">+ Προσθήκη 2ου Χρήστη</button>
                 
-                <!-- Extra Users Container -->
                 <div id="extraUsersContainer" class="mt-10"></div>
                 <button class="btn-secondary btn-small mt-10" onclick="App.addExtraUser()" style="border: 1px dashed var(--primary); background: transparent; color: var(--primary);">+ Προσθήκη Επιπλέον Χρήστη</button>
             </div>
@@ -119,7 +118,19 @@
 
             <!-- DASHBOARD / SUMMARY -->
             <div class="summary-dashboard">
-                <h3>Συνολικό Budget: <span id="totalIncomeDisplay" style="color: var(--primary);">0€</span></h3>
+                <div class="row justify-content-between align-items-center">
+                    <h3>Συνολικό Budget: <span id="totalIncomeDisplay" style="color: var(--primary);">0€</span></h3>
+                    
+                    <!-- NEW: Payment Methods Overview Widget -->
+                    <div class="payment-overview">
+                        <small>Σύνοψη Εξόδων</small>
+                        <div class="payment-chips">
+                            <span class="chip chip-cash" title="Σύνολο Μετρητών που ξοδεύτηκαν">Μετρητά: <b id="totalSpentCash">0€</b></span>
+                            <span class="chip chip-card" title="Σύνολο Κάρτας που ξοδεύτηκε">Κάρτα: <b id="totalSpentCard">0€</b></span>
+                        </div>
+                    </div>
+                </div>
+
                 <div class="stats-grid mt-10">
                     <div class="stat-card needs">
                         <h4>Needs Total</h4>
@@ -145,7 +156,7 @@
             <div class="grid-3">
                 <div class="form-group">
                     <label>Ονομασία Εξόδου</label>
-                    <input type="text" id="expName" placeholder="π.χ. Ενοίκιο" required>
+                    <input type="text" id="expName" placeholder="π.χ. Supermarket" required>
                 </div>
                 
                 <div class="form-group">
@@ -164,16 +175,26 @@
                 </div>
             </div>
 
-            <div class="grid-2 align-items-center">
+            <div class="grid-3 align-items-center">
                 <div class="form-group mb-0">
                     <label>Κόστος (€)</label>
                     <input type="number" id="expAmount" step="0.01" required>
                 </div>
+                
+                <div class="form-group mb-0">
+                    <label>Τρόπος Πληρωμής</label>
+                    <select id="expPaymentMethod">
+                        <option value="cash">Μετρητά</option>
+                        <option value="card">Κάρτα</option>
+                    </select>
+                </div>
+
                 <div class="form-group mb-0 voucher-checkbox-group" id="voucherToggleGroup" style="display: none;">
                     <label class="checkbox-container">
                         <input type="checkbox" id="expIsTicket">
                         <span class="checkmark"></span>
-                        Πληρωμή με διαθέσιμο Ticket/Κουπόνι
+                        Χρήση διαθέσιμου Ticket
+                        <small style="display:block; font-size:0.7rem; color:var(--text-muted); margin-top:2px;">(Η διαφορά θα καλυφθεί από την επιλεγμένη μέθοδο)</small>
                     </label>
                 </div>
             </div>
@@ -193,7 +214,7 @@
                         <tr>
                             <th>Όνομα</th>
                             <th>Κατηγορία</th>
-                            <th>Ποσό</th>
+                            <th>Ποσό / Ανάλυση</th>
                             <th></th>
                         </tr>
                     </thead>
@@ -202,7 +223,7 @@
             </div>
             <div class="summary-footer" style="flex-direction: column; gap: 8px;">
                 <div class="row w-100 justify-content-between">
-                    <span>Υπόλοιπο Μετρητών:</span>
+                    <span>Υπόλοιπο Μετρητών/Κάρτας:</span>
                     <span id="remNeedsCash">0.00 €</span>
                 </div>
                 <div class="row w-100 justify-content-between">
@@ -221,7 +242,7 @@
                         <tr>
                             <th>Όνομα</th>
                             <th>Κατηγορία</th>
-                            <th>Ποσό</th>
+                            <th>Ποσό / Ανάλυση</th>
                             <th></th>
                         </tr>
                     </thead>
@@ -230,7 +251,7 @@
             </div>
             <div class="summary-footer" style="flex-direction: column; gap: 8px;">
                 <div class="row w-100 justify-content-between">
-                    <span>Υπόλοιπο Μετρητών:</span>
+                    <span>Υπόλοιπο Μετρητών/Κάρτας:</span>
                     <span id="remWantsCash">0.00 €</span>
                 </div>
                 <div class="row w-100 justify-content-between">

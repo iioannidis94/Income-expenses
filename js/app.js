@@ -1,17 +1,17 @@
 class BudgetApp {
     constructor() {
-        this.storageKey = 'smart_budget_v7_data';
+        this.storageKey = 'smart_budget_v8_data';
         
         this.state = {
             users: {
                 u1: { active: true, name: 'Χρήστης 1', income: 1000 },
                 u2: { active: false, name: 'Χρήστης 2', income: 1000 }
             },
-            extraUsers: [], // {id, name, income}
-            extraIncomes: [], // {id, name, amount}
+            extraUsers: [], 
+            extraIncomes: [], 
             tickets: [], // {id, name, amount, target: 'needs' | 'wants', owner: 'u1' | 'u2' | 'u_...'}
             percentages: { needs: 50, wants: 30, invest: 20 },
-            expenses: [] // {id, name, category, subCategory, amount, isTicket}
+            expenses: [] // {id, name, category, subCategory, amount, isTicket, paymentMethod: 'cash' | 'card'}
         };
 
         this.categoryData = {
@@ -60,14 +60,13 @@ class BudgetApp {
             try { this.migrateAndSetState(JSON.parse(saved)); return; } catch(e) {}
         }
         
-        // Fallback to previous versions if v7 doesn't exist yet
-        const savedV6 = localStorage.getItem('smart_budget_v6_data');
-        if (savedV6) {
-            try { this.migrateAndSetState(JSON.parse(savedV6)); return; } catch(e) {}
-        }
-        const savedV5 = localStorage.getItem('smart_budget_v5_data');
-        if (savedV5) {
-            try { this.migrateAndSetState(JSON.parse(savedV5)); return; } catch(e) {}
+        // Fallback to older versions
+        const olderKeys = ['smart_budget_v7_data', 'smart_budget_v6_data', 'smart_budget_v5_data'];
+        for (let key of olderKeys) {
+            const olderSaved = localStorage.getItem(key);
+            if (olderSaved) {
+                try { this.migrateAndSetState(JSON.parse(olderSaved)); return; } catch(e) {}
+            }
         }
     }
 
@@ -86,6 +85,8 @@ class BudgetApp {
                     e.isTicket = e.useVoucher;
                     delete e.useVoucher;
                 }
+                // V8 migration: set default payment method for older expenses
+                if (!e.paymentMethod) e.paymentMethod = 'cash';
             });
         }
         this.state = data;
@@ -134,7 +135,7 @@ class BudgetApp {
         document.getElementById('percentageError').style.display = (pN + pW + pI !== 100) ? 'block' : 'none';
 
         this.saveState();
-        this.renderTickets(); // Re-render to update user names in dropdowns
+        this.renderTickets();
         this.renderDashboard();
     }
 
@@ -146,7 +147,6 @@ class BudgetApp {
         if (!isActive) {
             this.state.tickets.forEach(t => { if (t.owner === 'u2') t.owner = 'u1'; });
         }
-        
         if (!isInit) this.updateBaseState();
     }
 
@@ -162,7 +162,6 @@ class BudgetApp {
 
     removeExtraUser(id) {
         this.state.extraUsers = this.state.extraUsers.filter(u => u.id !== id);
-        // Reassign tickets of removed user to u1
         this.state.tickets.forEach(t => { if (t.owner === id) t.owner = 'u1'; });
         this.saveState();
         this.renderExtraUsers();
@@ -175,7 +174,7 @@ class BudgetApp {
         if (u) {
             u[field] = field === 'income' ? (parseFloat(value) || 0) : value;
             this.saveState();
-            if (field === 'name') this.renderTickets(); // Update dropdowns if name changes
+            if (field === 'name') this.renderTickets();
             this.renderDashboard();
         }
     }
@@ -265,7 +264,6 @@ class BudgetApp {
         const activeUsers = this.getActiveUsers();
         
         c.innerHTML = this.state.tickets.map(t => {
-            // Options for owner
             const ownerOptions = activeUsers.map(u => 
                 `<option value="${u.id}" ${t.owner === u.id ? 'selected' : ''}>${u.name}</option>`
             ).join('');
@@ -317,11 +315,12 @@ class BudgetApp {
             subCatSelect.dataset.currentCat = cat;
         }
 
-        const totals = this.calculateTotals();
+        const data = this.calculateTotals();
         const checkboxGroup = document.getElementById('voucherToggleGroup');
         const checkInput = document.getElementById('expIsTicket');
 
-        if ((cat === 'needs' && totals.rem.needsTickets > 0) || (cat === 'wants' && totals.rem.wantsTickets > 0)) {
+        // Show ticket checkbox ONLY if there are available tickets left in that category
+        if ((cat === 'needs' && data.rem.needsTickets > 0) || (cat === 'wants' && data.rem.wantsTickets > 0)) {
             checkboxGroup.style.display = 'block';
         } else {
             checkboxGroup.style.display = 'none';
@@ -335,16 +334,22 @@ class BudgetApp {
         const category = document.getElementById('expCategory').value;
         const subCategory = document.getElementById('expSubCategory').value;
         const amount = parseFloat(document.getElementById('expAmount').value);
+        const paymentMethod = document.getElementById('expPaymentMethod').value;
         const isTicket = document.getElementById('expIsTicket').checked;
 
         if (!name || isNaN(amount) || amount <= 0) return;
 
-        this.state.expenses.push({ id: Date.now().toString(), name, category, subCategory, amount, isTicket });
+        this.state.expenses.push({ 
+            id: Date.now().toString(), 
+            name, category, subCategory, amount, isTicket, paymentMethod 
+        });
+        
         this.saveState();
 
         document.getElementById('expName').value = '';
         document.getElementById('expAmount').value = '';
         document.getElementById('expIsTicket').checked = false;
+        document.getElementById('expPaymentMethod').value = 'cash';
         document.getElementById('expName').focus();
 
         this.renderDashboard();
@@ -356,7 +361,7 @@ class BudgetApp {
         this.renderDashboard();
     }
 
-    // --- Core Math ---
+    // --- Core Math (V8 Overflow Logic) ---
     calculateTotals() {
         const activeUsers = this.getActiveUsers();
         let userMap = {};
@@ -366,27 +371,23 @@ class BudgetApp {
             userMap[u.id] = u;
         });
 
-        // Distribute tickets to owners
-        this.state.tickets.forEach(t => {
-            let ownerId = t.owner;
-            if (!userMap[ownerId]) ownerId = 'u1'; // Safety fallback
-            
-            if (t.target === 'needs') userMap[ownerId].ticketsNeeds += t.amount;
-            if (t.target === 'wants') userMap[ownerId].ticketsWants += t.amount;
-        });
-
-        // Sum up total income
-        let totalCash = 0;
+        // Sum tickets
         let needsTicketsTotal = 0;
         let wantsTicketsTotal = 0;
 
+        this.state.tickets.forEach(t => {
+            let ownerId = t.owner;
+            if (!userMap[ownerId]) ownerId = 'u1';
+            
+            if (t.target === 'needs') { userMap[ownerId].ticketsNeeds += t.amount; needsTicketsTotal += t.amount; }
+            if (t.target === 'wants') { userMap[ownerId].ticketsWants += t.amount; wantsTicketsTotal += t.amount; }
+        });
+
+        let totalCash = 0;
         activeUsers.forEach(u => {
             u.ticketsTotal = u.ticketsNeeds + u.ticketsWants;
             u.totalIncome = u.cash + u.ticketsTotal;
-            
             totalCash += u.cash;
-            needsTicketsTotal += u.ticketsNeeds;
-            wantsTicketsTotal += u.ticketsWants;
         });
 
         let extraIncomeTotal = 0;
@@ -407,27 +408,59 @@ class BudgetApp {
         const needsCashAllocated = limits.needs - needsTicketsTotal;
         const wantsCashAllocated = limits.wants - wantsTicketsTotal;
 
-        let spent = { needsCash: 0, needsTickets: 0, wantsCash: 0, wantsTickets: 0 };
+        // --- Overflow Logic for Expenses ---
+        let currentNeedsTickets = needsTicketsTotal;
+        let currentWantsTickets = wantsTicketsTotal;
+
+        let spent = { needsCash: 0, needsCard: 0, needsTickets: 0, wantsCash: 0, wantsCard: 0, wantsTickets: 0 };
+        let expenseBreakdown = {}; // Store how much of ticket/cash/card was applied per expense
 
         this.state.expenses.forEach(ex => {
+            let amountLeft = ex.amount;
+            let b = { ticket: 0, cash: 0, card: 0 };
+            const isCard = (ex.paymentMethod === 'card');
+
             if (ex.category === 'needs') {
-                if (ex.isTicket) spent.needsTickets += ex.amount;
-                else spent.needsCash += ex.amount;
+                if (ex.isTicket && currentNeedsTickets > 0) {
+                    b.ticket = Math.min(amountLeft, currentNeedsTickets);
+                    spent.needsTickets += b.ticket;
+                    currentNeedsTickets -= b.ticket;
+                    amountLeft -= b.ticket;
+                }
+                if (amountLeft > 0) {
+                    if (isCard) { b.card = amountLeft; spent.needsCard += amountLeft; }
+                    else { b.cash = amountLeft; spent.needsCash += amountLeft; }
+                }
             } else if (ex.category === 'wants') {
-                if (ex.isTicket) spent.wantsTickets += ex.amount;
-                else spent.wantsCash += ex.amount;
+                if (ex.isTicket && currentWantsTickets > 0) {
+                    b.ticket = Math.min(amountLeft, currentWantsTickets);
+                    spent.wantsTickets += b.ticket;
+                    currentWantsTickets -= b.ticket;
+                    amountLeft -= b.ticket;
+                }
+                if (amountLeft > 0) {
+                    if (isCard) { b.card = amountLeft; spent.wantsCard += amountLeft; }
+                    else { b.cash = amountLeft; spent.wantsCash += amountLeft; }
+                }
             }
+            expenseBreakdown[ex.id] = b;
         });
+
+        // Totals combined for remainders
+        const totalNeedsCashSpent = spent.needsCash + spent.needsCard;
+        const totalWantsCashSpent = spent.wantsCash + spent.wantsCard;
 
         return {
             activeUsers,
             extraIncomeTotal, totalIncome, limits, 
             needsCashAllocated, wantsCashAllocated, needsTicketsTotal, wantsTicketsTotal,
+            expenseBreakdown, // Contains exact payment split per expense
+            spent,
             rem: {
-                needsCash: needsCashAllocated - spent.needsCash,
-                needsTickets: needsTicketsTotal - spent.needsTickets,
-                wantsCash: wantsCashAllocated - spent.wantsCash,
-                wantsTickets: wantsTicketsTotal - spent.wantsTickets
+                needsCash: needsCashAllocated - totalNeedsCashSpent,
+                needsTickets: currentNeedsTickets, // whatever is left
+                wantsCash: wantsCashAllocated - totalWantsCashSpent,
+                wantsTickets: currentWantsTickets
             }
         };
     }
@@ -458,14 +491,19 @@ class BudgetApp {
                 <td>${formatCell(u.totalIncome * pI, 0)}</td>
             </tr>
         `).join('');
-
         document.getElementById('userBreakdownBody').innerHTML = breakdownHTML;
 
-        // 2. Summary Dashboard limits
+        // 2. Summary Dashboard limits & Payment overview
         document.getElementById('totalIncomeDisplay').innerText = data.totalIncome.toFixed(2) + ' €';
         
-        document.getElementById('limitNeeds').innerHTML = `${data.limits.needs.toFixed(2)}€ <br><small style="font-size:0.75rem; font-weight:normal;">Cash: ${data.needsCashAllocated.toFixed(2)}€ | Tickets: ${data.needsTicketsTotal.toFixed(2)}€</small>`;
-        document.getElementById('limitWants').innerHTML = `${data.limits.wants.toFixed(2)}€ <br><small style="font-size:0.75rem; font-weight:normal;">Cash: ${data.wantsCashAllocated.toFixed(2)}€ | Tickets: ${data.wantsTicketsTotal.toFixed(2)}€</small>`;
+        // Update payment summary widget
+        const totalCashSpent = data.spent.needsCash + data.spent.wantsCash;
+        const totalCardSpent = data.spent.needsCard + data.spent.wantsCard;
+        document.getElementById('totalSpentCash').innerText = totalCashSpent.toFixed(2) + '€';
+        document.getElementById('totalSpentCard').innerText = totalCardSpent.toFixed(2) + '€';
+
+        document.getElementById('limitNeeds').innerHTML = `${data.limits.needs.toFixed(2)}€ <br><small style="font-size:0.75rem; font-weight:normal;">Cash/Card: ${data.needsCashAllocated.toFixed(2)}€ | Tickets: ${data.needsTicketsTotal.toFixed(2)}€</small>`;
+        document.getElementById('limitWants').innerHTML = `${data.limits.wants.toFixed(2)}€ <br><small style="font-size:0.75rem; font-weight:normal;">Cash/Card: ${data.wantsCashAllocated.toFixed(2)}€ | Tickets: ${data.wantsTicketsTotal.toFixed(2)}€</small>`;
         document.getElementById('limitInvest').innerText = data.limits.invest.toFixed(2) + ' €';
 
         // 3. Expense Tables
@@ -477,25 +515,35 @@ class BudgetApp {
         this.state.expenses.forEach(ex => {
             const tr = document.createElement('tr');
             const subStr = this.subCategoryMap[ex.subCategory] || 'Άλλο';
-            const paymentBadge = ex.isTicket ? `<br><span class="badge badge-voucher">Πληρώθηκε με Ticket</span>` : '';
-
-            if (ex.category === 'needs') {
-                tr.innerHTML = `
-                    <td>${ex.name} ${paymentBadge}</td>
-                    <td><span class="badge badge-sub">${subStr}</span></td>
-                    <td>${ex.amount.toFixed(2)} €</td>
-                    <td><button class="btn-delete btn-small" onclick="App.deleteExpense('${ex.id}')">X</button></td>
-                `;
-                needsBody.appendChild(tr);
-            } else {
-                tr.innerHTML = `
-                    <td>${ex.name} ${paymentBadge}</td>
-                    <td><span class="badge badge-sub wants-badge">${subStr}</span></td>
-                    <td>${ex.amount.toFixed(2)} €</td>
-                    <td><button class="btn-delete btn-small" onclick="App.deleteExpense('${ex.id}')">X</button></td>
-                `;
-                wantsBody.appendChild(tr);
+            
+            // Build dynamic badges based on how it was ACTUALLY paid
+            const breakdown = data.expenseBreakdown[ex.id];
+            let badgesHTML = '';
+            if (breakdown.ticket > 0) {
+                badgesHTML += `<span class="badge badge-voucher" style="margin-right:4px;">Ticket: ${breakdown.ticket.toFixed(2)}€</span>`;
             }
+            if (breakdown.cash > 0) {
+                badgesHTML += `<span class="badge badge-cash" style="margin-right:4px;">Μετρητά: ${breakdown.cash.toFixed(2)}€</span>`;
+            }
+            if (breakdown.card > 0) {
+                badgesHTML += `<span class="badge badge-card" style="margin-right:4px;">Κάρτα: ${breakdown.card.toFixed(2)}€</span>`;
+            }
+
+            const trContent = `
+                <td>
+                    <div style="margin-bottom: 4px;">${ex.name}</div>
+                </td>
+                <td><span class="badge badge-sub ${ex.category==='wants'?'wants-badge':''}">${subStr}</span></td>
+                <td>
+                    <div class="amount-main">${ex.amount.toFixed(2)} €</div>
+                    <div class="badge-container" style="flex-direction:row; flex-wrap:wrap;">${badgesHTML}</div>
+                </td>
+                <td><button class="btn-delete btn-small" onclick="App.deleteExpense('${ex.id}')">X</button></td>
+            `;
+            tr.innerHTML = trContent;
+
+            if (ex.category === 'needs') needsBody.appendChild(tr);
+            else wantsBody.appendChild(tr);
         });
 
         // 4. Remainders
@@ -510,7 +558,7 @@ class BudgetApp {
         setRem('remWantsCash', data.rem.wantsCash);
         setRem('remWantsTickets', data.rem.wantsTickets);
 
-        this.handleExpenseFormUI();
+        this.handleExpenseFormUI(); // Update UI if tickets depleted
     }
 
     // --- JSON Backup & Restore ---
@@ -521,7 +569,7 @@ class BudgetApp {
         
         const a = document.createElement('a');
         a.href = url;
-        a.download = `smart_budget_backup_v7_${new Date().toISOString().slice(0,10)}.json`;
+        a.download = `smart_budget_backup_v8_${new Date().toISOString().slice(0,10)}.json`;
         document.body.appendChild(a);
         a.click();
         

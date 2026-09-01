@@ -15,6 +15,15 @@
     --danger: #f87171;
     --warning-bg: rgba(248, 113, 113, 0.1);
     --warning-text: #f87171;
+    
+    /* NEW COLORS FOR PAYMENT METHODS */
+    --pay-cash-bg: rgba(234, 179, 8, 0.15);
+    --pay-cash-text: #fde047;
+    --pay-cash-border: #a16207;
+    
+    --pay-card-bg: rgba(148, 163, 184, 0.15);
+    --pay-card-text: #cbd5e1;
+    --pay-card-border: #475569;
 }
 
 * { box-sizing: border-box; }
@@ -136,8 +145,15 @@ button:hover { background-color: var(--primary-hover); opacity: 0.9; }
 .breakdown-table td { padding: 8px; font-size: 0.9rem; text-align: center; border-bottom: 1px solid var(--border);}
 .breakdown-table td:first-child { text-align: left; font-weight: bold; }
 
-/* Stats */
+/* Stats & Payment Dashboard */
 .summary-dashboard { margin-top: 25px; padding-top: 20px; border-top: 1px solid var(--border); }
+.payment-overview { text-align: right; }
+.payment-overview small { color: var(--text-muted); display: block; margin-bottom: 4px; text-transform: uppercase; font-size: 0.7rem; font-weight: bold;}
+.payment-chips { display: flex; gap: 8px; flex-wrap: wrap; justify-content: flex-end; }
+.chip { padding: 4px 10px; border-radius: 6px; font-size: 0.85rem; font-weight: 600; border: 1px solid transparent; }
+.chip-cash { background: var(--pay-cash-bg); color: var(--pay-cash-text); border-color: var(--pay-cash-border); }
+.chip-card { background: var(--pay-card-bg); color: var(--pay-card-text); border-color: var(--pay-card-border); }
+
 .stats-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 12px; }
 .stat-card { background: #0f172a; padding: 12px; border-radius: 8px; text-align: center; border: 1px solid var(--border); }
 .stat-card h4 { margin: 0 0 8px 0; font-size: 0.8rem; text-transform: uppercase; }
@@ -147,9 +163,9 @@ button:hover { background-color: var(--primary-hover); opacity: 0.9; }
 .stat-card.invest h4 { color: var(--invest-color); }
 
 /* Checkbox */
-.checkbox-container { display: flex; align-items: center; cursor: pointer; font-size: 0.9rem; font-weight: normal; text-transform: none; color: var(--text-main); }
+.checkbox-container { display: flex; align-items: center; cursor: pointer; font-size: 0.9rem; font-weight: normal; text-transform: none; color: var(--text-main); flex-wrap: wrap; }
 .checkbox-container input { display: none; }
-.checkmark { width: 20px; height: 20px; background: #0f172a; border: 2px solid var(--border); border-radius: 4px; margin-right: 10px; display: inline-flex; justify-content: center; align-items: center; }
+.checkmark { width: 20px; height: 20px; background: #0f172a; border: 2px solid var(--border); border-radius: 4px; margin-right: 10px; display: inline-flex; justify-content: center; align-items: center; flex-shrink: 0;}
 .checkbox-container input:checked + .checkmark { background: var(--wants-color); border-color: var(--wants-color); }
 .checkbox-container input:checked + .checkmark::after { content: '✓'; color: #0f172a; font-size: 14px; font-weight: bold; }
 .voucher-checkbox-group { background: rgba(52, 211, 153, 0.1); padding: 12px; border-radius: 8px; border: 1px solid var(--wants-color); }
@@ -157,12 +173,18 @@ button:hover { background-color: var(--primary-hover); opacity: 0.9; }
 /* Tables */
 .table-container { overflow-x: auto; }
 table { width: 100%; border-collapse: collapse; margin-bottom: 15px; }
-th, td { padding: 12px; text-align: left; border-bottom: 1px solid var(--border); font-size: 0.95rem; }
+th, td { padding: 12px; text-align: left; border-bottom: 1px solid var(--border); font-size: 0.95rem; vertical-align: top;}
 th { color: var(--text-muted); font-weight: 600; background: #0f172a; }
-.badge { display: inline-block; padding: 4px 8px; border-radius: 4px; font-size: 0.75rem; font-weight: bold; margin-top: 4px;}
+
+.badge-container { display: flex; flex-direction: column; gap: 4px; align-items: flex-start; margin-top: 6px; }
+.badge { display: inline-block; padding: 3px 6px; border-radius: 4px; font-size: 0.7rem; font-weight: bold; }
 .badge-voucher { background: rgba(52, 211, 153, 0.2); color: var(--wants-color); border: 1px solid var(--wants-color);}
 .badge-sub { background: rgba(56, 189, 248, 0.2); color: var(--needs-color); border: 1px solid var(--needs-color);}
 .badge-sub.wants-badge { background: rgba(167, 139, 250, 0.2); color: var(--invest-color); border: 1px solid var(--invest-color); }
+.badge-cash { background: var(--pay-cash-bg); color: var(--pay-cash-text); border: 1px solid var(--pay-cash-border); }
+.badge-card { background: var(--pay-card-bg); color: var(--pay-card-text); border: 1px solid var(--pay-card-border); }
+
+.amount-main { font-weight: bold; font-size: 1rem; }
 
 .btn-delete { background: rgba(248, 113, 113, 0.1); color: var(--danger); padding: 6px 10px; border-radius: 6px; border: 1px solid rgba(248, 113, 113, 0.2);}
 .btn-delete:hover { background: var(--danger); color: white; }
