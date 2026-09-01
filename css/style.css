@@ -148,8 +148,8 @@ button:hover { background-color: var(--primary-hover); opacity: 0.9; }
 /* Stats & Payment Dashboard */
 .summary-dashboard { margin-top: 25px; padding-top: 20px; border-top: 1px solid var(--border); }
 .payment-overview { text-align: right; }
-.payment-overview small { color: var(--text-muted); display: block; margin-bottom: 4px; text-transform: uppercase; font-size: 0.7rem; font-weight: bold;}
-.payment-chips { display: flex; gap: 8px; flex-wrap: wrap; justify-content: flex-end; }
+.payment-overview small { color: var(--text-muted); display: block; margin-bottom: 8px; text-transform: uppercase; font-size: 0.7rem; font-weight: bold;}
+.payment-chips { display: flex; gap: 8px; flex-wrap: wrap; justify-content: flex-end; max-width: 400px;}
 .chip { padding: 4px 10px; border-radius: 6px; font-size: 0.85rem; font-weight: 600; border: 1px solid transparent; }
 .chip-cash { background: var(--pay-cash-bg); color: var(--pay-cash-text); border-color: var(--pay-cash-border); }
 .chip-card { background: var(--pay-card-bg); color: var(--pay-card-text); border-color: var(--pay-card-border); }
@@ -177,7 +177,7 @@ th, td { padding: 12px; text-align: left; border-bottom: 1px solid var(--border)
 th { color: var(--text-muted); font-weight: 600; background: #0f172a; }
 
 .badge-container { display: flex; flex-direction: column; gap: 4px; align-items: flex-start; margin-top: 6px; }
-.badge { display: inline-block; padding: 3px 6px; border-radius: 4px; font-size: 0.7rem; font-weight: bold; }
+.badge { display: inline-block; padding: 3px 6px; border-radius: 4px; font-size: 0.75rem; font-weight: bold; }
 .badge-voucher { background: rgba(52, 211, 153, 0.2); color: var(--wants-color); border: 1px solid var(--wants-color);}
 .badge-sub { background: rgba(56, 189, 248, 0.2); color: var(--needs-color); border: 1px solid var(--needs-color);}
 .badge-sub.wants-badge { background: rgba(167, 139, 250, 0.2); color: var(--invest-color); border: 1px solid var(--invest-color); }

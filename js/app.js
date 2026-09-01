@@ -1,6 +1,6 @@
 class BudgetApp {
     constructor() {
-        this.storageKey = 'smart_budget_v8_data';
+        this.storageKey = 'smart_budget_v9_data';
         
         this.state = {
             users: {
@@ -10,8 +10,12 @@ class BudgetApp {
             extraUsers: [], 
             extraIncomes: [], 
             tickets: [], // {id, name, amount, target: 'needs' | 'wants', owner: 'u1' | 'u2' | 'u_...'}
+            paymentMethods: [
+                {id: 'pm_cash', name: 'Βασικά Μετρητά', type: 'cash'},
+                {id: 'pm_card', name: 'Βασική Κάρτα', type: 'card'}
+            ],
             percentages: { needs: 50, wants: 30, invest: 20 },
-            expenses: [] // {id, name, category, subCategory, amount, isTicket, paymentMethod: 'cash' | 'card'}
+            expenses: [] // {id, name, category, subCategory, amount, isTicket, paymentMethod: 'pm_...'}
         };
 
         this.categoryData = {
@@ -61,7 +65,7 @@ class BudgetApp {
         }
         
         // Fallback to older versions
-        const olderKeys = ['smart_budget_v7_data', 'smart_budget_v6_data', 'smart_budget_v5_data'];
+        const olderKeys = ['smart_budget_v8_data', 'smart_budget_v7_data', 'smart_budget_v6_data'];
         for (let key of olderKeys) {
             const olderSaved = localStorage.getItem(key);
             if (olderSaved) {
@@ -74,6 +78,12 @@ class BudgetApp {
         if (!data.extraIncomes) data.extraIncomes = [];
         if (!data.tickets) data.tickets = [];
         if (!data.extraUsers) data.extraUsers = [];
+        if (!data.paymentMethods) {
+            data.paymentMethods = [
+                {id: 'pm_cash', name: 'Βασικά Μετρητά', type: 'cash'},
+                {id: 'pm_card', name: 'Βασική Κάρτα', type: 'card'}
+            ];
+        }
         
         data.tickets.forEach(t => {
             if (!t.owner) t.owner = 'u1';
@@ -85,8 +95,10 @@ class BudgetApp {
                     e.isTicket = e.useVoucher;
                     delete e.useVoucher;
                 }
-                // V8 migration: set default payment method for older expenses
-                if (!e.paymentMethod) e.paymentMethod = 'cash';
+                // V9 migration: update old 'cash'/'card' strings to exact PM IDs
+                if (!e.paymentMethod) e.paymentMethod = 'pm_cash';
+                if (e.paymentMethod === 'cash') e.paymentMethod = 'pm_cash';
+                if (e.paymentMethod === 'card') e.paymentMethod = 'pm_card';
             });
         }
         this.state = data;
@@ -94,6 +106,15 @@ class BudgetApp {
 
     saveState() {
         localStorage.setItem(this.storageKey, JSON.stringify(this.state));
+    }
+    
+    // Clear Month Feature
+    clearMonth() {
+        if (confirm("Είστε σίγουροι; Θα διαγραφούν ΟΛΑ τα έξοδα του τρέχοντος μήνα. Τα έσοδα, οι χρήστες και οι λογαριασμοί θα παραμείνουν άθικτα!")) {
+            this.state.expenses = [];
+            this.saveState();
+            this.fullRender();
+        }
     }
 
     // --- DOM Updates ---
@@ -111,6 +132,7 @@ class BudgetApp {
         
         this.renderExtraUsers();
         this.renderExtraIncomes();
+        this.renderPaymentMethods();
         this.renderTickets();
         
         const subCatSelect = document.getElementById('expSubCategory');
@@ -196,6 +218,65 @@ class BudgetApp {
                 </div>
             </div>
         `).join('');
+    }
+
+    // --- Dynamic Payment Methods ---
+    addPaymentMethod() {
+        const nameInput = document.getElementById('newPmName');
+        const typeInput = document.getElementById('newPmType');
+        const name = nameInput.value.trim();
+        if (!name) return;
+        
+        this.state.paymentMethods.push({
+            id: 'pm_' + Date.now().toString(),
+            name: name,
+            type: typeInput.value
+        });
+        
+        nameInput.value = '';
+        this.saveState();
+        this.renderPaymentMethods();
+        this.handleExpenseFormUI(); // update dropdown
+    }
+    
+    removePaymentMethod(id) {
+        // Prevent deleting if it's the only one left to avoid breaking the form
+        if (this.state.paymentMethods.length <= 1) {
+            alert("Πρέπει να υπάρχει τουλάχιστον ένας λογαριασμός πληρωμής!");
+            return;
+        }
+        this.state.paymentMethods = this.state.paymentMethods.filter(pm => pm.id !== id);
+        this.saveState();
+        this.renderPaymentMethods();
+        this.handleExpenseFormUI();
+    }
+    
+    renderPaymentMethods() {
+        const c = document.getElementById('paymentMethodsContainer');
+        c.innerHTML = this.state.paymentMethods.map(pm => {
+            const icon = pm.type === 'cash' ? '💵' : '💳';
+            return `
+            <div class="row form-group align-items-center" style="margin-bottom: 8px;">
+                <div class="col" style="display:flex; align-items:center; gap: 10px;">
+                    <span style="font-size:1.2rem;">${icon}</span>
+                    <input type="text" value="${pm.name}" onchange="App.updatePaymentMethod('${pm.id}', this.value)">
+                </div>
+                <div>
+                    <button class="btn-delete btn-small" onclick="App.removePaymentMethod('${pm.id}')">X</button>
+                </div>
+            </div>
+            `;
+        }).join('');
+    }
+    
+    updatePaymentMethod(id, newName) {
+        const pm = this.state.paymentMethods.find(x => x.id === id);
+        if (pm && newName.trim()) {
+            pm.name = newName.trim();
+            this.saveState();
+            this.handleExpenseFormUI();
+            this.renderDashboard(); // refresh badges
+        }
     }
 
     // --- Dynamic Extra Incomes ---
@@ -303,6 +384,7 @@ class BudgetApp {
     handleExpenseFormUI() {
         const cat = document.getElementById('expCategory').value;
         const subCatSelect = document.getElementById('expSubCategory');
+        const pmSelect = document.getElementById('expPaymentMethod');
         
         if (subCatSelect.dataset.currentCat !== cat) {
             subCatSelect.innerHTML = '';
@@ -314,12 +396,22 @@ class BudgetApp {
             });
             subCatSelect.dataset.currentCat = cat;
         }
+        
+        // Populate Payment Methods dropdown
+        const currentPmValue = pmSelect.value;
+        pmSelect.innerHTML = this.state.paymentMethods.map(pm => {
+            return `<option value="${pm.id}">${pm.name} (${pm.type === 'cash' ? 'Μετρητά' : 'Κάρτα'})</option>`;
+        }).join('');
+        
+        // Restore selection if it still exists
+        if (currentPmValue && this.state.paymentMethods.find(pm => pm.id === currentPmValue)) {
+            pmSelect.value = currentPmValue;
+        }
 
         const data = this.calculateTotals();
         const checkboxGroup = document.getElementById('voucherToggleGroup');
         const checkInput = document.getElementById('expIsTicket');
 
-        // Show ticket checkbox ONLY if there are available tickets left in that category
         if ((cat === 'needs' && data.rem.needsTickets > 0) || (cat === 'wants' && data.rem.wantsTickets > 0)) {
             checkboxGroup.style.display = 'block';
         } else {
@@ -349,7 +441,6 @@ class BudgetApp {
         document.getElementById('expName').value = '';
         document.getElementById('expAmount').value = '';
         document.getElementById('expIsTicket').checked = false;
-        document.getElementById('expPaymentMethod').value = 'cash';
         document.getElementById('expName').focus();
 
         this.renderDashboard();
@@ -361,7 +452,7 @@ class BudgetApp {
         this.renderDashboard();
     }
 
-    // --- Core Math (V8 Overflow Logic) ---
+    // --- Core Math (V9 Overflow Logic) ---
     calculateTotals() {
         const activeUsers = this.getActiveUsers();
         let userMap = {};
@@ -412,53 +503,54 @@ class BudgetApp {
         let currentNeedsTickets = needsTicketsTotal;
         let currentWantsTickets = wantsTicketsTotal;
 
-        let spent = { needsCash: 0, needsCard: 0, needsTickets: 0, wantsCash: 0, wantsCard: 0, wantsTickets: 0 };
-        let expenseBreakdown = {}; // Store how much of ticket/cash/card was applied per expense
+        let totalNeedsCashSpent = 0;
+        let totalWantsCashSpent = 0;
+        
+        let spentByMethod = {};
+        this.state.paymentMethods.forEach(pm => spentByMethod[pm.id] = 0);
+        let expenseBreakdown = {}; 
 
         this.state.expenses.forEach(ex => {
             let amountLeft = ex.amount;
-            let b = { ticket: 0, cash: 0, card: 0 };
-            const isCard = (ex.paymentMethod === 'card');
+            let b = { ticket: 0, customMethodId: ex.paymentMethod, methodAmount: 0 };
 
             if (ex.category === 'needs') {
                 if (ex.isTicket && currentNeedsTickets > 0) {
                     b.ticket = Math.min(amountLeft, currentNeedsTickets);
-                    spent.needsTickets += b.ticket;
                     currentNeedsTickets -= b.ticket;
                     amountLeft -= b.ticket;
                 }
                 if (amountLeft > 0) {
-                    if (isCard) { b.card = amountLeft; spent.needsCard += amountLeft; }
-                    else { b.cash = amountLeft; spent.needsCash += amountLeft; }
+                    b.methodAmount = amountLeft;
+                    if (!spentByMethod[ex.paymentMethod]) spentByMethod[ex.paymentMethod] = 0;
+                    spentByMethod[ex.paymentMethod] += amountLeft;
+                    totalNeedsCashSpent += amountLeft;
                 }
             } else if (ex.category === 'wants') {
                 if (ex.isTicket && currentWantsTickets > 0) {
                     b.ticket = Math.min(amountLeft, currentWantsTickets);
-                    spent.wantsTickets += b.ticket;
                     currentWantsTickets -= b.ticket;
                     amountLeft -= b.ticket;
                 }
                 if (amountLeft > 0) {
-                    if (isCard) { b.card = amountLeft; spent.wantsCard += amountLeft; }
-                    else { b.cash = amountLeft; spent.wantsCash += amountLeft; }
+                    b.methodAmount = amountLeft;
+                    if (!spentByMethod[ex.paymentMethod]) spentByMethod[ex.paymentMethod] = 0;
+                    spentByMethod[ex.paymentMethod] += amountLeft;
+                    totalWantsCashSpent += amountLeft;
                 }
             }
             expenseBreakdown[ex.id] = b;
         });
 
-        // Totals combined for remainders
-        const totalNeedsCashSpent = spent.needsCash + spent.needsCard;
-        const totalWantsCashSpent = spent.wantsCash + spent.wantsCard;
-
         return {
             activeUsers,
             extraIncomeTotal, totalIncome, limits, 
             needsCashAllocated, wantsCashAllocated, needsTicketsTotal, wantsTicketsTotal,
-            expenseBreakdown, // Contains exact payment split per expense
-            spent,
+            expenseBreakdown, 
+            spentByMethod,
             rem: {
                 needsCash: needsCashAllocated - totalNeedsCashSpent,
-                needsTickets: currentNeedsTickets, // whatever is left
+                needsTickets: currentNeedsTickets,
                 wantsCash: wantsCashAllocated - totalWantsCashSpent,
                 wantsTickets: currentWantsTickets
             }
@@ -493,14 +585,18 @@ class BudgetApp {
         `).join('');
         document.getElementById('userBreakdownBody').innerHTML = breakdownHTML;
 
-        // 2. Summary Dashboard limits & Payment overview
+        // 2. Summary Dashboard limits
         document.getElementById('totalIncomeDisplay').innerText = data.totalIncome.toFixed(2) + ' €';
         
-        // Update payment summary widget
-        const totalCashSpent = data.spent.needsCash + data.spent.wantsCash;
-        const totalCardSpent = data.spent.needsCard + data.spent.wantsCard;
-        document.getElementById('totalSpentCash').innerText = totalCashSpent.toFixed(2) + '€';
-        document.getElementById('totalSpentCard').innerText = totalCardSpent.toFixed(2) + '€';
+        // Render Payment Chips based on custom methods
+        const chipsHtml = this.state.paymentMethods.map(pm => {
+            const spent = data.spentByMethod[pm.id] || 0;
+            if (spent === 0) return '';
+            const cssClass = pm.type === 'cash' ? 'chip-cash' : 'chip-card';
+            return `<span class="chip ${cssClass}" title="Ξοδεύτηκαν από: ${pm.name}">${pm.name}: <b>${spent.toFixed(2)}€</b></span>`;
+        }).join('');
+        
+        document.getElementById('paymentChipsContainer').innerHTML = chipsHtml || '<span style="font-size: 0.8rem; color: var(--text-muted);">Δεν υπάρχουν χρεώσεις</span>';
 
         document.getElementById('limitNeeds').innerHTML = `${data.limits.needs.toFixed(2)}€ <br><small style="font-size:0.75rem; font-weight:normal;">Cash/Card: ${data.needsCashAllocated.toFixed(2)}€ | Tickets: ${data.needsTicketsTotal.toFixed(2)}€</small>`;
         document.getElementById('limitWants').innerHTML = `${data.limits.wants.toFixed(2)}€ <br><small style="font-size:0.75rem; font-weight:normal;">Cash/Card: ${data.wantsCashAllocated.toFixed(2)}€ | Tickets: ${data.wantsTicketsTotal.toFixed(2)}€</small>`;
@@ -516,17 +612,21 @@ class BudgetApp {
             const tr = document.createElement('tr');
             const subStr = this.subCategoryMap[ex.subCategory] || 'Άλλο';
             
-            // Build dynamic badges based on how it was ACTUALLY paid
+            // Generate Badges
             const breakdown = data.expenseBreakdown[ex.id];
             let badgesHTML = '';
+            
             if (breakdown.ticket > 0) {
-                badgesHTML += `<span class="badge badge-voucher" style="margin-right:4px;">Ticket: ${breakdown.ticket.toFixed(2)}€</span>`;
+                badgesHTML += `<span class="badge badge-voucher" style="margin-right:4px; margin-bottom: 4px;">Ticket: ${breakdown.ticket.toFixed(2)}€</span>`;
             }
-            if (breakdown.cash > 0) {
-                badgesHTML += `<span class="badge badge-cash" style="margin-right:4px;">Μετρητά: ${breakdown.cash.toFixed(2)}€</span>`;
-            }
-            if (breakdown.card > 0) {
-                badgesHTML += `<span class="badge badge-card" style="margin-right:4px;">Κάρτα: ${breakdown.card.toFixed(2)}€</span>`;
+            if (breakdown.methodAmount > 0) {
+                const pmInfo = this.state.paymentMethods.find(p => p.id === breakdown.customMethodId);
+                if (pmInfo) {
+                    const pmClass = pmInfo.type === 'cash' ? 'badge-cash' : 'badge-card';
+                    badgesHTML += `<span class="badge ${pmClass}" style="margin-right:4px; margin-bottom: 4px;">${pmInfo.name}: ${breakdown.methodAmount.toFixed(2)}€</span>`;
+                } else {
+                    badgesHTML += `<span class="badge badge-cash" style="margin-right:4px; margin-bottom: 4px;">Άγνωστο: ${breakdown.methodAmount.toFixed(2)}€</span>`;
+                }
             }
 
             const trContent = `
@@ -558,7 +658,7 @@ class BudgetApp {
         setRem('remWantsCash', data.rem.wantsCash);
         setRem('remWantsTickets', data.rem.wantsTickets);
 
-        this.handleExpenseFormUI(); // Update UI if tickets depleted
+        this.handleExpenseFormUI(); // Ensure ticket checkbox sync
     }
 
     // --- JSON Backup & Restore ---
@@ -569,7 +669,7 @@ class BudgetApp {
         
         const a = document.createElement('a');
         a.href = url;
-        a.download = `smart_budget_backup_v8_${new Date().toISOString().slice(0,10)}.json`;
+        a.download = `smart_budget_backup_v9_${new Date().toISOString().slice(0,10)}.json`;
         document.body.appendChild(a);
         a.click();
         

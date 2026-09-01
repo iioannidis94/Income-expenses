@@ -3,29 +3,30 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Smart Budget Planner V8</title>
+    <title>Smart Budget Planner V9</title>
     <link rel="stylesheet" href="css/style.css">
 </head>
 <body>
 
 <div class="container">
     <header>
-        <h1>Smart Budget Planner <span style="font-size: 1rem; color: var(--primary);">V8</span></h1>
-        <p>Έξυπνο Overflow Tickets & Tracking Μετρητών/Κάρτας (Dark Mode & Backup)</p>
+        <h1>Smart Budget Planner <span style="font-size: 1rem; color: var(--primary);">V9</span></h1>
+        <p>Custom Τρόποι Πληρωμής & Καθαρισμός Μήνα (Dark Mode & Backup)</p>
         <div class="header-actions">
             <button class="btn-secondary btn-small" onclick="App.exportData()">💾 Εξαγωγή (JSON)</button>
             <label class="btn-secondary btn-small" style="cursor:pointer;">
                 📂 Εισαγωγή (JSON)
                 <input type="file" id="importFile" accept=".json" style="display:none;" onchange="App.importData(event)">
             </label>
+            <button class="btn-secondary btn-small" style="border: 1px solid var(--danger); color: var(--danger); background: rgba(248,113,113,0.1);" onclick="App.clearMonth()">🗑️ Νέος Μήνας</button>
         </div>
     </header>
 
     <!-- SETTINGS & INCOMES -->
     <div class="grid-2">
-        <!-- ΕΣΟΔΑ -->
+        <!-- ΕΣΟΔΑ & ΡΥΘΜΙΣΕΙΣ -->
         <section class="card">
-            <h2>1. Πηγές Εσόδων</h2>
+            <h2>1. Πηγές Εσόδων & Λογαριασμοί</h2>
             
             <div class="user-block">
                 <h3>Χρήστες / Συνεισφέροντες</h3>
@@ -55,7 +56,6 @@
                 </div>
                 
                 <button id="addUser2Btn" class="btn-secondary btn-small mt-10" onclick="App.toggleUser2(true)">+ Προσθήκη 2ου Χρήστη</button>
-                
                 <div id="extraUsersContainer" class="mt-10"></div>
                 <button class="btn-secondary btn-small mt-10" onclick="App.addExtraUser()" style="border: 1px dashed var(--primary); background: transparent; color: var(--primary);">+ Προσθήκη Επιπλέον Χρήστη</button>
             </div>
@@ -70,9 +70,30 @@
 
             <hr class="divider">
 
+            <div class="user-block" style="border-color: var(--invest-color);">
+                <h3>Λογαριασμοί / Μέθοδοι Πληρωμής</h3>
+                <small class="help-text" style="margin-bottom: 15px;">Προσθέστε τις κάρτες σας (π.χ. Πειραιώς Χρήστη 1) ή τα πορτοφόλια σας για ακριβή έλεγχο.</small>
+                <div id="paymentMethodsContainer"></div>
+                <div class="row form-group align-items-center mt-10" style="background: rgba(255,255,255,0.05); padding: 10px; border-radius: 8px;">
+                    <div class="col">
+                        <input type="text" id="newPmName" placeholder="Όνομα Κάρτας/Μετρητών">
+                    </div>
+                    <div class="col">
+                        <select id="newPmType">
+                            <option value="cash">Μετρητά</option>
+                            <option value="card">Κάρτα</option>
+                        </select>
+                    </div>
+                    <div>
+                        <button class="btn-secondary btn-small" onclick="App.addPaymentMethod()">+ Προσθήκη</button>
+                    </div>
+                </div>
+            </div>
+
+            <hr class="divider">
+
             <div class="user-block" style="border-color: var(--wants-color);">
                 <h3>Κουπόνια / Tickets ανά Χρήστη</h3>
-                <small class="help-text" style="margin-bottom: 15px;">Επιλέξτε σε ποιον ανήκει το ticket. Συνυπολογίζεται στο συνολικό του έσοδο για το διαμοιρασμό!</small>
                 <div id="ticketsContainer"></div>
                 <button class="btn-secondary btn-small mt-10" onclick="App.addTicket()" style="background-color: var(--wants-color); color: #0f172a;">+ Προσθήκη Ticket</button>
             </div>
@@ -121,12 +142,10 @@
                 <div class="row justify-content-between align-items-center">
                     <h3>Συνολικό Budget: <span id="totalIncomeDisplay" style="color: var(--primary);">0€</span></h3>
                     
-                    <!-- NEW: Payment Methods Overview Widget -->
                     <div class="payment-overview">
-                        <small>Σύνοψη Εξόδων</small>
-                        <div class="payment-chips">
-                            <span class="chip chip-cash" title="Σύνολο Μετρητών που ξοδεύτηκαν">Μετρητά: <b id="totalSpentCash">0€</b></span>
-                            <span class="chip chip-card" title="Σύνολο Κάρτας που ξοδεύτηκε">Κάρτα: <b id="totalSpentCard">0€</b></span>
+                        <small>Σύνοψη Εξόδων ανά Λογαριασμό</small>
+                        <div class="payment-chips" id="paymentChipsContainer">
+                            <!-- Dynamic chips go here -->
                         </div>
                     </div>
                 </div>
@@ -184,8 +203,7 @@
                 <div class="form-group mb-0">
                     <label>Τρόπος Πληρωμής</label>
                     <select id="expPaymentMethod">
-                        <option value="cash">Μετρητά</option>
-                        <option value="card">Κάρτα</option>
+                        <!-- Dynamic via JS based on user's custom methods -->
                     </select>
                 </div>
 
@@ -223,7 +241,7 @@
             </div>
             <div class="summary-footer" style="flex-direction: column; gap: 8px;">
                 <div class="row w-100 justify-content-between">
-                    <span>Υπόλοιπο Μετρητών/Κάρτας:</span>
+                    <span>Υπόλοιπο (Όλοι οι λογαριασμοί):</span>
                     <span id="remNeedsCash">0.00 €</span>
                 </div>
                 <div class="row w-100 justify-content-between">
@@ -251,7 +269,7 @@
             </div>
             <div class="summary-footer" style="flex-direction: column; gap: 8px;">
                 <div class="row w-100 justify-content-between">
-                    <span>Υπόλοιπο Μετρητών/Κάρτας:</span>
+                    <span>Υπόλοιπο (Όλοι οι λογαριασμοί):</span>
                     <span id="remWantsCash">0.00 €</span>
                 </div>
                 <div class="row w-100 justify-content-between">
