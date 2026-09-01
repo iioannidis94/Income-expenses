@@ -1,14 +1,15 @@
 class BudgetApp {
     constructor() {
-        this.storageKey = 'smart_budget_v5_data';
+        this.storageKey = 'smart_budget_v7_data';
         
         this.state = {
             users: {
                 u1: { active: true, name: 'Χρήστης 1', income: 1000 },
                 u2: { active: false, name: 'Χρήστης 2', income: 1000 }
             },
+            extraUsers: [], // {id, name, income}
             extraIncomes: [], // {id, name, amount}
-            tickets: [], // {id, name, amount, target: 'needs' | 'wants', owner: 'u1' | 'u2'}
+            tickets: [], // {id, name, amount, target: 'needs' | 'wants', owner: 'u1' | 'u2' | 'u_...'}
             percentages: { needs: 50, wants: 30, invest: 20 },
             expenses: [] // {id, name, category, subCategory, amount, isTicket}
         };
@@ -40,22 +41,41 @@ class BudgetApp {
         this.fullRender();
     }
 
+    // --- Core Data Helpers ---
+    getActiveUsers() {
+        const active = [ { id: 'u1', name: this.state.users.u1.name, cash: this.state.users.u1.income } ];
+        if (this.state.users.u2.active) {
+            active.push({ id: 'u2', name: this.state.users.u2.name, cash: this.state.users.u2.income });
+        }
+        this.state.extraUsers.forEach(eu => {
+            active.push({ id: eu.id, name: eu.name, cash: eu.income });
+        });
+        return active;
+    }
+
     // --- State Management ---
     loadState() {
         const saved = localStorage.getItem(this.storageKey);
         if (saved) {
-            try {
-                const data = JSON.parse(saved);
-                this.migrateAndSetState(data);
-            } catch(e) { console.error("Error loading state", e); }
+            try { this.migrateAndSetState(JSON.parse(saved)); return; } catch(e) {}
+        }
+        
+        // Fallback to previous versions if v7 doesn't exist yet
+        const savedV6 = localStorage.getItem('smart_budget_v6_data');
+        if (savedV6) {
+            try { this.migrateAndSetState(JSON.parse(savedV6)); return; } catch(e) {}
+        }
+        const savedV5 = localStorage.getItem('smart_budget_v5_data');
+        if (savedV5) {
+            try { this.migrateAndSetState(JSON.parse(savedV5)); return; } catch(e) {}
         }
     }
 
     migrateAndSetState(data) {
         if (!data.extraIncomes) data.extraIncomes = [];
         if (!data.tickets) data.tickets = [];
+        if (!data.extraUsers) data.extraUsers = [];
         
-        // V5 Ticket Migration: Add owner field if missing
         data.tickets.forEach(t => {
             if (!t.owner) t.owner = 'u1';
         });
@@ -88,6 +108,7 @@ class BudgetApp {
 
         this.toggleUser2(this.state.users.u2.active, true);
         
+        this.renderExtraUsers();
         this.renderExtraIncomes();
         this.renderTickets();
         
@@ -122,14 +143,60 @@ class BudgetApp {
         document.getElementById('user2Container').style.display = isActive ? 'block' : 'none';
         document.getElementById('addUser2Btn').style.display = isActive ? 'none' : 'block';
         
-        // If user 2 is deactivated, reassign their tickets to user 1
         if (!isActive) {
-            this.state.tickets.forEach(t => {
-                if (t.owner === 'u2') t.owner = 'u1';
-            });
+            this.state.tickets.forEach(t => { if (t.owner === 'u2') t.owner = 'u1'; });
         }
         
         if (!isInit) this.updateBaseState();
+    }
+
+    // --- Dynamic Extra Users ---
+    addExtraUser() {
+        const newId = 'u_' + Date.now().toString();
+        this.state.extraUsers.push({ id: newId, name: 'Νέος Χρήστης', income: 1000 });
+        this.saveState();
+        this.renderExtraUsers();
+        this.renderTickets();
+        this.renderDashboard();
+    }
+
+    removeExtraUser(id) {
+        this.state.extraUsers = this.state.extraUsers.filter(u => u.id !== id);
+        // Reassign tickets of removed user to u1
+        this.state.tickets.forEach(t => { if (t.owner === id) t.owner = 'u1'; });
+        this.saveState();
+        this.renderExtraUsers();
+        this.renderTickets();
+        this.renderDashboard();
+    }
+
+    updateExtraUser(id, field, value) {
+        const u = this.state.extraUsers.find(x => x.id === id);
+        if (u) {
+            u[field] = field === 'income' ? (parseFloat(value) || 0) : value;
+            this.saveState();
+            if (field === 'name') this.renderTickets(); // Update dropdowns if name changes
+            this.renderDashboard();
+        }
+    }
+
+    renderExtraUsers() {
+        const c = document.getElementById('extraUsersContainer');
+        c.innerHTML = this.state.extraUsers.map(u => `
+            <div class="form-group row mt-10">
+                <div class="col">
+                    <label>Όνομα Επιπλέον Χρήστη</label>
+                    <input type="text" value="${u.name}" oninput="App.updateExtraUser('${u.id}', 'name', this.value)">
+                </div>
+                <div class="col">
+                    <label>Έσοδα (€)</label>
+                    <input type="number" value="${u.income}" oninput="App.updateExtraUser('${u.id}', 'income', this.value)">
+                </div>
+                <div style="display: flex; align-items: end;">
+                    <button class="btn-delete btn-small" onclick="App.removeExtraUser('${u.id}')">X</button>
+                </div>
+            </div>
+        `).join('');
     }
 
     // --- Dynamic Extra Incomes ---
@@ -195,7 +262,15 @@ class BudgetApp {
     }
     renderTickets() {
         const c = document.getElementById('ticketsContainer');
-        c.innerHTML = this.state.tickets.map(t => `
+        const activeUsers = this.getActiveUsers();
+        
+        c.innerHTML = this.state.tickets.map(t => {
+            // Options for owner
+            const ownerOptions = activeUsers.map(u => 
+                `<option value="${u.id}" ${t.owner === u.id ? 'selected' : ''}>${u.name}</option>`
+            ).join('');
+
+            return `
             <div class="row form-group align-items-center" style="flex-wrap: wrap;">
                 <div class="col">
                     <label>Όνομα Ticket</label>
@@ -215,15 +290,15 @@ class BudgetApp {
                 <div class="col">
                     <label>Κάτοχος</label>
                     <select onchange="App.updateTicket('${t.id}', 'owner', this.value)">
-                        <option value="u1" ${t.owner === 'u1' ? 'selected' : ''}>${this.state.users.u1.name}</option>
-                        ${this.state.users.u2.active ? `<option value="u2" ${t.owner === 'u2' ? 'selected' : ''}>${this.state.users.u2.name}</option>` : ''}
+                        ${ownerOptions}
                     </select>
                 </div>
                 <div>
                     <button class="btn-delete btn-small" onclick="App.removeTicket('${t.id}')">X</button>
                 </div>
             </div>
-        `).join('');
+            `;
+        }).join('');
     }
 
     // --- Expense Management ---
@@ -283,29 +358,41 @@ class BudgetApp {
 
     // --- Core Math ---
     calculateTotals() {
-        let u1Cash = this.state.users.u1.income;
-        let u2Cash = this.state.users.u2.active ? this.state.users.u2.income : 0;
-        
+        const activeUsers = this.getActiveUsers();
+        let userMap = {};
+        activeUsers.forEach(u => {
+            u.ticketsNeeds = 0;
+            u.ticketsWants = 0;
+            userMap[u.id] = u;
+        });
+
+        // Distribute tickets to owners
+        this.state.tickets.forEach(t => {
+            let ownerId = t.owner;
+            if (!userMap[ownerId]) ownerId = 'u1'; // Safety fallback
+            
+            if (t.target === 'needs') userMap[ownerId].ticketsNeeds += t.amount;
+            if (t.target === 'wants') userMap[ownerId].ticketsWants += t.amount;
+        });
+
+        // Sum up total income
+        let totalCash = 0;
+        let needsTicketsTotal = 0;
+        let wantsTicketsTotal = 0;
+
+        activeUsers.forEach(u => {
+            u.ticketsTotal = u.ticketsNeeds + u.ticketsWants;
+            u.totalIncome = u.cash + u.ticketsTotal;
+            
+            totalCash += u.cash;
+            needsTicketsTotal += u.ticketsNeeds;
+            wantsTicketsTotal += u.ticketsWants;
+        });
+
         let extraIncomeTotal = 0;
         this.state.extraIncomes.forEach(e => extraIncomeTotal += e.amount);
 
-        let u1TicketsNeeds = 0, u1TicketsWants = 0;
-        let u2TicketsNeeds = 0, u2TicketsWants = 0;
-
-        this.state.tickets.forEach(t => {
-            if (t.owner === 'u2' && this.state.users.u2.active) {
-                if (t.target === 'needs') u2TicketsNeeds += t.amount;
-                if (t.target === 'wants') u2TicketsWants += t.amount;
-            } else {
-                if (t.target === 'needs') u1TicketsNeeds += t.amount;
-                if (t.target === 'wants') u1TicketsWants += t.amount;
-            }
-        });
-
-        const u1TicketsTotal = u1TicketsNeeds + u1TicketsWants;
-        const u2TicketsTotal = u2TicketsNeeds + u2TicketsWants;
-        
-        const totalIncome = u1Cash + u2Cash + extraIncomeTotal + u1TicketsTotal + u2TicketsTotal;
+        const totalIncome = totalCash + extraIncomeTotal + needsTicketsTotal + wantsTicketsTotal;
 
         const pN = this.state.percentages.needs / 100;
         const pW = this.state.percentages.wants / 100;
@@ -316,9 +403,6 @@ class BudgetApp {
             wants: totalIncome * pW,
             invest: totalIncome * pI
         };
-
-        const needsTicketsTotal = u1TicketsNeeds + u2TicketsNeeds;
-        const wantsTicketsTotal = u1TicketsWants + u2TicketsWants;
 
         const needsCashAllocated = limits.needs - needsTicketsTotal;
         const wantsCashAllocated = limits.wants - wantsTicketsTotal;
@@ -336,8 +420,7 @@ class BudgetApp {
         });
 
         return {
-            u1: { cash: u1Cash, ticketsNeeds: u1TicketsNeeds, ticketsWants: u1TicketsWants, ticketsTotal: u1TicketsTotal },
-            u2: { cash: u2Cash, ticketsNeeds: u2TicketsNeeds, ticketsWants: u2TicketsWants, ticketsTotal: u2TicketsTotal },
+            activeUsers,
             extraIncomeTotal, totalIncome, limits, 
             needsCashAllocated, wantsCashAllocated, needsTicketsTotal, wantsTicketsTotal,
             rem: {
@@ -367,23 +450,15 @@ class BudgetApp {
                     </small>`;
         };
 
-        const u1Total = data.u1.cash + data.u1.ticketsTotal;
-        let breakdownHTML = `<tr>
-            <td>${this.state.users.u1.name}</td>
-            <td>${formatCell(u1Total * pN, data.u1.ticketsNeeds)}</td>
-            <td>${formatCell(u1Total * pW, data.u1.ticketsWants)}</td>
-            <td>${formatCell(u1Total * pI, 0)}</td>
-        </tr>`;
+        let breakdownHTML = data.activeUsers.map(u => `
+            <tr>
+                <td>${u.name}</td>
+                <td>${formatCell(u.totalIncome * pN, u.ticketsNeeds)}</td>
+                <td>${formatCell(u.totalIncome * pW, u.ticketsWants)}</td>
+                <td>${formatCell(u.totalIncome * pI, 0)}</td>
+            </tr>
+        `).join('');
 
-        if (this.state.users.u2.active) {
-            const u2Total = data.u2.cash + data.u2.ticketsTotal;
-            breakdownHTML += `<tr>
-                <td>${this.state.users.u2.name}</td>
-                <td>${formatCell(u2Total * pN, data.u2.ticketsNeeds)}</td>
-                <td>${formatCell(u2Total * pW, data.u2.ticketsWants)}</td>
-                <td>${formatCell(u2Total * pI, 0)}</td>
-            </tr>`;
-        }
         document.getElementById('userBreakdownBody').innerHTML = breakdownHTML;
 
         // 2. Summary Dashboard limits
@@ -446,7 +521,7 @@ class BudgetApp {
         
         const a = document.createElement('a');
         a.href = url;
-        a.download = `smart_budget_backup_v5_${new Date().toISOString().slice(0,10)}.json`;
+        a.download = `smart_budget_backup_v7_${new Date().toISOString().slice(0,10)}.json`;
         document.body.appendChild(a);
         a.click();
         

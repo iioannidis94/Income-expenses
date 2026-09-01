@@ -3,15 +3,15 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Smart Budget Planner V5</title>
+    <title>Smart Budget Planner V7</title>
     <link rel="stylesheet" href="css/style.css">
 </head>
 <body>
 
 <div class="container">
     <header>
-        <h1>Smart Budget Planner <span style="font-size: 1rem; color: var(--primary);">V5</span></h1>
-        <p>Tickets ανά Χρήστη & Ακριβής Διαμοιρασμός (Dark Mode & Backup)</p>
+        <h1>Smart Budget Planner <span style="font-size: 1rem; color: var(--primary);">V7</span></h1>
+        <p>Απεριόριστοι Χρήστες & Ακριβής Διαμοιρασμός (Dark Mode & Backup)</p>
         <div class="header-actions">
             <button class="btn-secondary btn-small" onclick="App.exportData()">💾 Εξαγωγή (JSON)</button>
             <label class="btn-secondary btn-small" style="cursor:pointer;">
@@ -28,7 +28,7 @@
             <h2>1. Πηγές Εσόδων</h2>
             
             <div class="user-block">
-                <h3>Βασικοί Χρήστες</h3>
+                <h3>Χρήστες / Συνεισφέροντες</h3>
                 <div class="form-group row">
                     <div class="col">
                         <label>Όνομα Χρήστη 1</label>
@@ -55,6 +55,10 @@
                 </div>
                 
                 <button id="addUser2Btn" class="btn-secondary btn-small mt-10" onclick="App.toggleUser2(true)">+ Προσθήκη 2ου Χρήστη</button>
+                
+                <!-- Extra Users Container -->
+                <div id="extraUsersContainer" class="mt-10"></div>
+                <button class="btn-secondary btn-small mt-10" onclick="App.addExtraUser()" style="border: 1px dashed var(--primary); background: transparent; color: var(--primary);">+ Προσθήκη Επιπλέον Χρήστη</button>
             </div>
 
             <hr class="divider">
