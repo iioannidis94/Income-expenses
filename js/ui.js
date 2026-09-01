@@ -29,7 +29,6 @@ class UIManager {
         document.getElementById('addUser2Btn').style.display = state.users.u2.active ? 'none' : 'block';
     }
     
-    // --- SMART FILL FEATURE ---
     renderSmartFills() {
         const state = this.stateManager.state;
         const pN = state.percentages.needs || 0;
@@ -103,6 +102,7 @@ class UIManager {
         const c = document.getElementById('paymentMethodsContainer');
         c.innerHTML = this.stateManager.state.paymentMethods.map(pm => {
             const icon = pm.type === 'cash' ? '💵' : '💳';
+            const primaryBadge = pm.isPrimary ? `<span class="badge badge-primary">★ Βασικός</span>` : '';
             const ownerOpts = `<option value="joint" ${pm.owner === 'joint' ? 'selected' : ''}>Κοινό</option>` +
                 activeUsers.map(u => `<option value="${u.id}" ${pm.owner === u.id ? 'selected' : ''}>${u.name}</option>`).join('');
 
@@ -110,7 +110,10 @@ class UIManager {
             <div class="row form-group align-items-center" style="margin-bottom: 8px; flex-wrap:wrap;">
                 <div class="col" style="display:flex; align-items:center; gap: 10px;">
                     <span style="font-size:1.2rem;">${icon}</span>
-                    <input type="text" value="${pm.name}" onchange="App.updatePaymentMethod('${pm.id}', 'name', this.value)">
+                    <div>
+                        <input type="text" value="${pm.name}" onchange="App.updatePaymentMethod('${pm.id}', 'name', this.value)">
+                        ${primaryBadge}
+                    </div>
                 </div>
                 <div class="col">
                     <select onchange="App.updatePaymentMethod('${pm.id}', 'owner', this.value)">
@@ -180,7 +183,8 @@ class UIManager {
 
         const currentPmValue = pmSelect.value;
         pmSelect.innerHTML = this.stateManager.state.paymentMethods.map(pm => {
-            return `<option value="${pm.id}">${pm.name} (${pm.type === 'cash' ? 'Μετρητά' : 'Κάρτα'})</option>`;
+            const primMark = pm.isPrimary ? ' (Βασικός)' : '';
+            return `<option value="${pm.id}">${pm.name} - ${pm.type === 'cash' ? 'Μετρητά' : 'Κάρτα'}${primMark}</option>`;
         }).join('');
         if (currentPmValue && this.stateManager.state.paymentMethods.find(pm => pm.id === currentPmValue)) {
             pmSelect.value = currentPmValue;
@@ -195,12 +199,46 @@ class UIManager {
         const checkboxGroup = document.getElementById('voucherToggleGroup');
         const checkInput = document.getElementById('expIsTicket');
 
-        if ((cat === 'needs' && data.rem.needsTickets > 0) || (cat === 'wants' && data.rem.wantsTickets > 0)) {
-            checkboxGroup.style.display = 'block';
-        } else {
-            checkboxGroup.style.display = 'none';
-            checkInput.checked = false;
+        if (data) {
+            if ((cat === 'needs' && data.rem.needsTickets > 0) || (cat === 'wants' && data.rem.wantsTickets > 0)) {
+                checkboxGroup.style.display = 'block';
+            } else {
+                checkboxGroup.style.display = 'none';
+                checkInput.checked = false;
+            }
         }
+    }
+
+    populateExpenseForm(ex) {
+        document.getElementById('expName').value = ex.name;
+        document.getElementById('expCategory').value = ex.category;
+        
+        // Ensure subcategory renders correctly
+        this.handleExpenseFormUI();
+        
+        document.getElementById('expSubCategory').value = ex.subCategory;
+        document.getElementById('expAmount').value = ex.amount;
+        document.getElementById('expPaymentMethod').value = ex.paymentMethod;
+        document.getElementById('expOwner').value = ex.expenseOwner;
+        document.getElementById('expIsTicket').checked = ex.isTicket;
+
+        // Modify button
+        document.getElementById('expenseSubmitBtn').innerText = 'Αποθήκευση Αλλαγών';
+        document.getElementById('expenseCancelBtn').style.display = 'inline-block';
+        document.getElementById('expenseFormTitle').innerText = 'Επεξεργασία Εξόδου';
+        
+        // Scroll to form
+        document.getElementById('expenseFormSection').scrollIntoView({ behavior: 'smooth' });
+    }
+
+    resetExpenseForm() {
+        document.getElementById('expName').value = '';
+        document.getElementById('expAmount').value = '';
+        document.getElementById('expIsTicket').checked = false;
+        
+        document.getElementById('expenseSubmitBtn').innerText = 'Προσθήκη Εξόδου';
+        document.getElementById('expenseCancelBtn').style.display = 'none';
+        document.getElementById('expenseFormTitle').innerText = '3. Καταχώρηση Εξόδου';
     }
 
     sortExpensesList(category, expensesList) {
@@ -308,7 +346,10 @@ class UIManager {
                     <div class="amount-main">${ex.amount.toFixed(2)} €</div>
                     <div class="badge-container" style="flex-direction:row; flex-wrap:wrap;">${badgesHTML}</div>
                 </td>
-                <td><button class="btn-delete btn-small" onclick="App.deleteExpense('${ex.id}')">X</button></td>
+                <td>
+                    <button class="btn-edit btn-small" onclick="App.editExpense('${ex.id}')">✏️</button>
+                    <button class="btn-delete btn-small" onclick="App.deleteExpense('${ex.id}')">X</button>
+                </td>
             `;
             container.appendChild(tr);
         };
@@ -329,7 +370,7 @@ class UIManager {
 
         this.handleExpenseFormUI(data);
         this.renderSmartFills();
-        SettlementsManager.populate(document.getElementById('settlementsBody'), data, this.stateManager);
+        SettlementsManager.populate(data, this.stateManager);
     }
 
     renderChart(data) {

@@ -1,6 +1,6 @@
 class StateManager {
     constructor() {
-        this.storageKey = 'smart_budget_v13_data';
+        this.storageKey = 'smart_budget_v14_data';
         this.categoryData = {
             needs: [
                 { id: 'rent', label: 'Ενοίκιο' },
@@ -33,8 +33,8 @@ class StateManager {
             extraIncomes: [],
             tickets: [],
             paymentMethods: [
-                { id: 'pm_cash', name: 'Βασικά Μετρητά', type: 'cash', owner: 'u1' },
-                { id: 'pm_card', name: 'Βασική Κάρτα', type: 'card', owner: 'u1' }
+                { id: 'pm_cash', name: 'Βασικά Μετρητά', type: 'cash', owner: 'u1', isPrimary: true },
+                { id: 'pm_card', name: 'Βασική Κάρτα', type: 'card', owner: 'u1', isPrimary: true }
             ],
             percentages: { needs: 50, wants: 30, invest: 10, savings: 10 },
             expenses: []
@@ -48,8 +48,7 @@ class StateManager {
         if (saved) {
             try { this.migrateAndSetState(JSON.parse(saved)); return; } catch (e) {}
         }
-        // Fallback to older versions
-        const olderKeys = ['smart_budget_v12_data', 'smart_budget_v11_data', 'smart_budget_v10_data'];
+        const olderKeys = ['smart_budget_v13_data', 'smart_budget_v12_data', 'smart_budget_v11_data'];
         for (let key of olderKeys) {
             const olderSaved = localStorage.getItem(key);
             if (olderSaved) {
@@ -64,11 +63,14 @@ class StateManager {
         if (!data.extraUsers) data.extraUsers = [];
         if (!data.paymentMethods) {
             data.paymentMethods = [
-                { id: 'pm_cash', name: 'Βασικά Μετρητά', type: 'cash', owner: 'u1' },
-                { id: 'pm_card', name: 'Βασική Κάρτα', type: 'card', owner: 'u1' }
+                { id: 'pm_cash', name: 'Βασικά Μετρητά', type: 'cash', owner: 'u1', isPrimary: true },
+                { id: 'pm_card', name: 'Βασική Κάρτα', type: 'card', owner: 'u1', isPrimary: true }
             ];
         } else {
-            data.paymentMethods.forEach(pm => { if (!pm.owner) pm.owner = 'u1'; });
+            data.paymentMethods.forEach(pm => { 
+                if (!pm.owner) pm.owner = 'u1'; 
+                if (pm.isPrimary === undefined) pm.isPrimary = true; // Make old accounts primary by default
+            });
         }
         if (data.percentages.savings === undefined) data.percentages.savings = 0;
         data.tickets.forEach(t => { if (!t.owner) t.owner = 'u1'; });

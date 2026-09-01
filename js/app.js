@@ -2,6 +2,7 @@ class MainApp {
     constructor() {
         this.stateManager = new StateManager();
         this.ui = new UIManager(this.stateManager);
+        this.editingExpenseId = null; // Track if we are editing
         this.init();
     }
 
@@ -37,7 +38,6 @@ class MainApp {
         this.refresh();
     }
     
-    // --- SMART FILL TRIGGER ---
     applySmartFill(inputId, neededValue) {
         document.getElementById(inputId).value = neededValue;
         this.updateBaseState();
@@ -114,6 +114,7 @@ class MainApp {
         const nameInput = document.getElementById('newPmName');
         const typeInput = document.getElementById('newPmType');
         const ownerInput = document.getElementById('newPmOwner');
+        const isPrimary = document.getElementById('newPmPrimary').checked;
         const name = nameInput.value.trim();
         if (!name) return;
 
@@ -121,9 +122,11 @@ class MainApp {
             id: 'pm_' + Date.now().toString(),
             name: name,
             type: typeInput.value,
-            owner: ownerInput.value
+            owner: ownerInput.value,
+            isPrimary: isPrimary
         });
         nameInput.value = '';
+        document.getElementById('newPmPrimary').checked = false; // Reset to unchecked
         this.stateManager.save();
         this.ui.renderPaymentMethods();
         this.handleExpenseFormUI();
@@ -177,7 +180,8 @@ class MainApp {
         const data = BudgetCalculator.calculate(this.stateManager);
         this.ui.handleExpenseFormUI(data);
     }
-    addExpense(e) {
+    
+    saveExpense(e) {
         e.preventDefault();
         const name = document.getElementById('expName').value.trim();
         const category = document.getElementById('expCategory').value;
@@ -189,24 +193,48 @@ class MainApp {
 
         if (!name || isNaN(amount) || amount <= 0) return;
 
-        this.stateManager.state.expenses.push({
-            id: Date.now().toString(), timestamp: Date.now(),
-            name, category, subCategory, amount, isTicket, paymentMethod, expenseOwner
-        });
+        if (this.editingExpenseId) {
+            // Update existing
+            const ex = this.stateManager.state.expenses.find(e => e.id === this.editingExpenseId);
+            if (ex) {
+                ex.name = name; ex.category = category; ex.subCategory = subCategory;
+                ex.amount = amount; ex.isTicket = isTicket;
+                ex.paymentMethod = paymentMethod; ex.expenseOwner = expenseOwner;
+            }
+            this.editingExpenseId = null;
+        } else {
+            // Create new
+            this.stateManager.state.expenses.push({
+                id: Date.now().toString(), timestamp: Date.now(),
+                name, category, subCategory, amount, isTicket, paymentMethod, expenseOwner
+            });
+        }
 
         this.stateManager.save();
-        document.getElementById('expName').value = '';
-        document.getElementById('expAmount').value = '';
-        document.getElementById('expIsTicket').checked = false;
-        document.getElementById('expName').focus();
-
+        this.ui.resetExpenseForm();
         this.refresh();
     }
+
+    editExpense(id) {
+        const ex = this.stateManager.state.expenses.find(e => e.id === id);
+        if (!ex) return;
+        this.editingExpenseId = id;
+        this.ui.populateExpenseForm(ex);
+    }
+
+    cancelEdit() {
+        this.editingExpenseId = null;
+        this.ui.resetExpenseForm();
+    }
+
     deleteExpense(id) {
-        this.stateManager.state.expenses = this.stateManager.state.expenses.filter(ex => ex.id !== id);
-        this.stateManager.save();
-        this.refresh();
+        if(confirm('Διαγραφή εξόδου;')) {
+            this.stateManager.state.expenses = this.stateManager.state.expenses.filter(ex => ex.id !== id);
+            this.stateManager.save();
+            this.refresh();
+        }
     }
+    
     renderDashboard() {
         this.refresh();
     }
@@ -231,6 +259,7 @@ class MainApp {
     clearMonth() {
         if (confirm("Είστε σίγουροι; Θα διαγραφούν ΟΛΑ τα έξοδα του τρέχοντος μήνα!")) {
             this.stateManager.clearExpenses();
+            this.cancelEdit();
             this.refresh();
         }
     }
@@ -242,7 +271,7 @@ class MainApp {
         const url = URL.createObjectURL(blob);
         const a = document.createElement('a');
         a.href = url;
-        a.download = `smart_budget_backup_v13_${new Date().toISOString().slice(0, 10)}.json`;
+        a.download = `smart_budget_backup_v14_${new Date().toISOString().slice(0, 10)}.json`;
         document.body.appendChild(a);
         a.click();
         document.body.removeChild(a);

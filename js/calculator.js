@@ -103,6 +103,7 @@ class BudgetCalculator {
             }
         });
 
+        // 1. Settlements (Inter-user debts)
         let userBalances = {};
         activeUsers.forEach(u => userBalances[u.id] = 0);
 
@@ -118,6 +119,20 @@ class BudgetCalculator {
                 if (userBalances[item.expenseOwner] !== undefined) {
                     userBalances[item.expenseOwner] -= item.amount;
                 }
+            }
+        });
+
+        // 2. Account Replenishments (Secondary -> Primary transfer suggestions)
+        let replenishments = [];
+        state.paymentMethods.forEach(pm => {
+            if (!pm.isPrimary && spentByMethod[pm.id] > 0) {
+                const ownerPrimaryPm = state.paymentMethods.find(p => p.owner === pm.owner && p.isPrimary);
+                replenishments.push({
+                    ownerId: pm.owner,
+                    amount: spentByMethod[pm.id],
+                    fromPm: ownerPrimaryPm ? ownerPrimaryPm.name : 'Βασικός σας Λογαριασμός',
+                    toPm: pm.name
+                });
             }
         });
 
@@ -142,7 +157,8 @@ class BudgetCalculator {
                 needs: totalNeedsCashSpent + (needsTicketsTotal - currentNeedsTickets),
                 wants: totalWantsCashSpent + (wantsTicketsTotal - currentWantsTickets)
             },
-            settlements: userBalances
+            settlements: userBalances,
+            replenishments: replenishments
         };
     }
 }
