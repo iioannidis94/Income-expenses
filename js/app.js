@@ -1,18 +1,18 @@
 class BudgetApp {
     constructor() {
-        this.storageKey = 'smart_budget_v3_data';
+        this.storageKey = 'smart_budget_v4_data';
         
         this.state = {
             users: {
                 u1: { active: true, name: 'Χρήστης 1', income: 1000 },
                 u2: { active: false, name: 'Χρήστης 2', income: 1000 }
             },
-            vouchers: 100,
+            extraIncomes: [], // {id, name, amount}
+            tickets: [], // {id, name, amount, target: 'needs' | 'wants'}
             percentages: { needs: 50, wants: 30, invest: 20 },
-            expenses: []
+            expenses: [] // {id, name, category, subCategory, amount, isTicket}
         };
 
-        // Data Structure for Dynamic Dropdowns
         this.categoryData = {
             needs: [
                 { id: 'rent', label: 'Ενοίκιο' },
@@ -32,195 +32,330 @@ class BudgetApp {
             ]
         };
 
-        // Flatten for easy mapping in the tables
         this.subCategoryMap = {};
         this.categoryData.needs.forEach(item => { this.subCategoryMap[item.id] = item.label; });
         this.categoryData.wants.forEach(item => { this.subCategoryMap[item.id] = item.label; });
 
         this.loadState();
-        this.initUI();
+        this.fullRender();
     }
 
+    // --- State Management ---
     loadState() {
         const saved = localStorage.getItem(this.storageKey);
         if (saved) {
-            this.state = JSON.parse(saved);
+            try {
+                const data = JSON.parse(saved);
+                this.migrateAndSetState(data);
+            } catch(e) { console.error("Error loading state", e); }
         }
+    }
+
+    migrateAndSetState(data) {
+        if (!data.extraIncomes) data.extraIncomes = [];
+        if (!data.tickets) {
+            data.tickets = [];
+            // Migrate from V3 vouchers
+            if (data.vouchers) {
+                data.tickets.push({ id: 'v3-migration', name: 'Legacy Ticket', amount: data.vouchers, target: 'needs' });
+                delete data.vouchers;
+            }
+        }
+        if (data.expenses) {
+            data.expenses.forEach(e => {
+                if (e.useVoucher !== undefined) {
+                    e.isTicket = e.useVoucher;
+                    delete e.useVoucher;
+                }
+            });
+        }
+        this.state = data;
     }
 
     saveState() {
         localStorage.setItem(this.storageKey, JSON.stringify(this.state));
     }
 
-    initUI() {
-        // Hydrate Inputs
+    // --- DOM Updates ---
+    fullRender() {
+        // Hydrate Static Inputs
         document.getElementById('user1Name').value = this.state.users.u1.name;
         document.getElementById('user1Income').value = this.state.users.u1.income;
-        
         document.getElementById('user2Name').value = this.state.users.u2.name;
         document.getElementById('user2Income').value = this.state.users.u2.income;
         
-        document.getElementById('vouchers').value = this.state.vouchers;
-
         document.getElementById('percNeeds').value = this.state.percentages.needs;
         document.getElementById('percWants').value = this.state.percentages.wants;
         document.getElementById('percInvest').value = this.state.percentages.invest;
 
-        // Toggle User 2 visibility
         this.toggleUser2(this.state.users.u2.active, true);
         
-        // Setup dropdowns
-        this.handleCategoryChange(); 
-        this.render();
+        this.renderExtraIncomes();
+        this.renderTickets();
+        
+        // Expense form init
+        const subCatSelect = document.getElementById('expSubCategory');
+        subCatSelect.dataset.currentCat = ''; 
+        this.handleExpenseFormUI(); 
+
+        this.renderDashboard();
     }
 
-    toggleUser2(isActive, isInit = false) {
-        this.state.users.u2.active = isActive;
-        
-        document.getElementById('user2Container').style.display = isActive ? 'block' : 'none';
-        document.getElementById('addUser2Btn').style.display = isActive ? 'none' : 'block';
-        
-        if (!isInit) {
-            this.updateState();
-        }
-    }
-
-    updateState() {
+    updateBaseState() {
         this.state.users.u1.name = document.getElementById('user1Name').value || 'Χρήστης 1';
         this.state.users.u1.income = parseFloat(document.getElementById('user1Income').value) || 0;
         
         this.state.users.u2.name = document.getElementById('user2Name').value || 'Χρήστης 2';
         this.state.users.u2.income = parseFloat(document.getElementById('user2Income').value) || 0;
 
-        this.state.vouchers = parseFloat(document.getElementById('vouchers').value) || 0;
+        const pN = parseFloat(document.getElementById('percNeeds').value) || 0;
+        const pW = parseFloat(document.getElementById('percWants').value) || 0;
+        const pI = parseFloat(document.getElementById('percInvest').value) || 0;
+        this.state.percentages = { needs: pN, wants: pW, invest: pI };
 
-        const pNeeds = parseFloat(document.getElementById('percNeeds').value) || 0;
-        const pWants = parseFloat(document.getElementById('percWants').value) || 0;
-        const pInvest = parseFloat(document.getElementById('percInvest').value) || 0;
-
-        this.state.percentages = { needs: pNeeds, wants: pWants, invest: pInvest };
-
-        const totalPerc = pNeeds + pWants + pInvest;
-        document.getElementById('percentageError').style.display = (totalPerc !== 100) ? 'block' : 'none';
+        document.getElementById('percentageError').style.display = (pN + pW + pI !== 100) ? 'block' : 'none';
 
         this.saveState();
-        this.render();
+        this.renderDashboard();
     }
 
-    handleCategoryChange() {
+    toggleUser2(isActive, isInit = false) {
+        this.state.users.u2.active = isActive;
+        document.getElementById('user2Container').style.display = isActive ? 'block' : 'none';
+        document.getElementById('addUser2Btn').style.display = isActive ? 'none' : 'block';
+        if (!isInit) this.updateBaseState();
+    }
+
+    // --- Dynamic Extra Incomes ---
+    addExtraIncome() {
+        this.state.extraIncomes.push({ id: Date.now().toString(), name: 'Νέο Έσοδο', amount: 0 });
+        this.saveState();
+        this.renderExtraIncomes();
+        this.renderDashboard();
+    }
+    removeExtraIncome(id) {
+        this.state.extraIncomes = this.state.extraIncomes.filter(x => x.id !== id);
+        this.saveState();
+        this.renderExtraIncomes();
+        this.renderDashboard();
+    }
+    updateExtraIncome(id, field, value) {
+        const item = this.state.extraIncomes.find(x => x.id === id);
+        if (item) {
+            item[field] = field === 'amount' ? (parseFloat(value) || 0) : value;
+            this.saveState();
+            this.renderDashboard(); // Update numbers without rebuilding inputs
+        }
+    }
+    renderExtraIncomes() {
+        const c = document.getElementById('extraIncomesContainer');
+        c.innerHTML = this.state.extraIncomes.map(inc => `
+            <div class="row form-group align-items-center">
+                <div class="col">
+                    <label>Όνομα</label>
+                    <input type="text" value="${inc.name}" oninput="App.updateExtraIncome('${inc.id}', 'name', this.value)">
+                </div>
+                <div class="col">
+                    <label>Ποσό (€)</label>
+                    <input type="number" value="${inc.amount}" oninput="App.updateExtraIncome('${inc.id}', 'amount', this.value)">
+                </div>
+                <div>
+                    <button class="btn-delete btn-small" onclick="App.removeExtraIncome('${inc.id}')">X</button>
+                </div>
+            </div>
+        `).join('');
+    }
+
+    // --- Dynamic Tickets ---
+    addTicket() {
+        this.state.tickets.push({ id: Date.now().toString(), name: 'Κουπόνι / Ticket', amount: 0, target: 'needs' });
+        this.saveState();
+        this.renderTickets();
+        this.renderDashboard();
+    }
+    removeTicket(id) {
+        this.state.tickets = this.state.tickets.filter(x => x.id !== id);
+        this.saveState();
+        this.renderTickets();
+        this.renderDashboard();
+    }
+    updateTicket(id, field, value) {
+        const item = this.state.tickets.find(x => x.id === id);
+        if (item) {
+            item[field] = field === 'amount' ? (parseFloat(value) || 0) : value;
+            this.saveState();
+            this.renderDashboard();
+        }
+    }
+    renderTickets() {
+        const c = document.getElementById('ticketsContainer');
+        c.innerHTML = this.state.tickets.map(t => `
+            <div class="row form-group align-items-center">
+                <div class="col">
+                    <label>Όνομα Ticket</label>
+                    <input type="text" value="${t.name}" oninput="App.updateTicket('${t.id}', 'name', this.value)">
+                </div>
+                <div class="col">
+                    <label>Ποσό (€)</label>
+                    <input type="number" value="${t.amount}" oninput="App.updateTicket('${t.id}', 'amount', this.value)">
+                </div>
+                <div class="col">
+                    <label>Προορισμός</label>
+                    <select onchange="App.updateTicket('${t.id}', 'target', this.value)">
+                        <option value="needs" ${t.target === 'needs' ? 'selected' : ''}>Needs (Ανάγκες)</option>
+                        <option value="wants" ${t.target === 'wants' ? 'selected' : ''}>Wants (Επιθυμίες)</option>
+                    </select>
+                </div>
+                <div>
+                    <button class="btn-delete btn-small" onclick="App.removeTicket('${t.id}')">X</button>
+                </div>
+            </div>
+        `).join('');
+    }
+
+    // --- Expense Management ---
+    handleExpenseFormUI() {
         const cat = document.getElementById('expCategory').value;
         const subCatSelect = document.getElementById('expSubCategory');
         
-        // Clear and populate SubCategories
-        subCatSelect.innerHTML = '';
-        this.categoryData[cat].forEach(item => {
-            const opt = document.createElement('option');
-            opt.value = item.id;
-            opt.textContent = item.label;
-            subCatSelect.appendChild(opt);
-        });
+        if (subCatSelect.dataset.currentCat !== cat) {
+            subCatSelect.innerHTML = '';
+            this.categoryData[cat].forEach(item => {
+                const opt = document.createElement('option');
+                opt.value = item.id;
+                opt.textContent = item.label;
+                subCatSelect.appendChild(opt);
+            });
+            subCatSelect.dataset.currentCat = cat;
+        }
 
-        this.handleSubCategoryChange();
-    }
+        // Show/Hide ticket checkbox
+        const totals = this.calculateTotals();
+        const checkboxGroup = document.getElementById('voucherToggleGroup');
+        const checkInput = document.getElementById('expIsTicket');
 
-    handleSubCategoryChange() {
-        const cat = document.getElementById('expCategory').value;
-        const subCat = document.getElementById('expSubCategory').value;
-        const voucherGroup = document.getElementById('voucherToggleGroup');
-        const useVoucherCheck = document.getElementById('expUseVoucher');
-
-        if (cat === 'needs' && subCat === 'supermarket') {
-            voucherGroup.style.display = 'block';
+        if ((cat === 'needs' && totals.rem.needsTickets > 0) || (cat === 'wants' && totals.rem.wantsTickets > 0)) {
+            checkboxGroup.style.display = 'block';
         } else {
-            voucherGroup.style.display = 'none';
-            useVoucherCheck.checked = false;
+            checkboxGroup.style.display = 'none';
+            checkInput.checked = false;
         }
     }
 
     addExpense(e) {
         e.preventDefault();
-
         const name = document.getElementById('expName').value.trim();
         const category = document.getElementById('expCategory').value;
         const subCategory = document.getElementById('expSubCategory').value;
         const amount = parseFloat(document.getElementById('expAmount').value);
-        const useVoucher = (category === 'needs' && subCategory === 'supermarket') ? document.getElementById('expUseVoucher').checked : false;
+        const isTicket = document.getElementById('expIsTicket').checked;
 
         if (!name || isNaN(amount) || amount <= 0) return;
 
-        const expense = {
-            id: Date.now().toString(),
-            name,
-            category,
-            subCategory,
-            amount,
-            useVoucher
-        };
-
-        this.state.expenses.push(expense);
+        this.state.expenses.push({ id: Date.now().toString(), name, category, subCategory, amount, isTicket });
         this.saveState();
 
-        // Reset form specifics
         document.getElementById('expName').value = '';
         document.getElementById('expAmount').value = '';
-        document.getElementById('expUseVoucher').checked = false;
+        document.getElementById('expIsTicket').checked = false;
         document.getElementById('expName').focus();
 
-        this.render();
+        this.renderDashboard();
     }
 
     deleteExpense(id) {
         this.state.expenses = this.state.expenses.filter(ex => ex.id !== id);
         this.saveState();
-        this.render();
+        this.renderDashboard();
     }
 
+    // --- Core Math ---
     calculateTotals() {
-        let totalCash = this.state.users.u1.income;
-        if (this.state.users.u2.active) {
-            totalCash += this.state.users.u2.income;
-        }
+        let cashIncome = this.state.users.u1.income + (this.state.users.u2.active ? this.state.users.u2.income : 0);
+        this.state.extraIncomes.forEach(e => cashIncome += e.amount);
+
+        let ticketIncome = 0;
+        let needsTicketsTotal = 0;
+        let wantsTicketsTotal = 0;
+
+        this.state.tickets.forEach(t => {
+            ticketIncome += t.amount;
+            if (t.target === 'needs') needsTicketsTotal += t.amount;
+            if (t.target === 'wants') wantsTicketsTotal += t.amount;
+        });
+
+        const totalIncome = cashIncome + ticketIncome;
 
         const p = this.state.percentages;
         const limits = {
-            needs: totalCash * (p.needs / 100),
-            wants: totalCash * (p.wants / 100),
-            invest: totalCash * (p.invest / 100),
-            vouchers: this.state.vouchers
+            needs: totalIncome * (p.needs / 100),
+            wants: totalIncome * (p.wants / 100),
+            invest: totalIncome * (p.invest / 100)
         };
 
-        let spent = { needsCash: 0, wantsCash: 0, vouchers: 0 };
+        const needsCashAllocated = limits.needs - needsTicketsTotal;
+        const wantsCashAllocated = limits.wants - wantsTicketsTotal;
+
+        let spent = { needsCash: 0, needsTickets: 0, wantsCash: 0, wantsTickets: 0 };
 
         this.state.expenses.forEach(ex => {
-            if (ex.useVoucher) {
-                spent.vouchers += ex.amount;
-            } else {
-                if (ex.category === 'needs') spent.needsCash += ex.amount;
-                if (ex.category === 'wants') spent.wantsCash += ex.amount;
+            if (ex.category === 'needs') {
+                if (ex.isTicket) spent.needsTickets += ex.amount;
+                else spent.needsCash += ex.amount;
+            } else if (ex.category === 'wants') {
+                if (ex.isTicket) spent.wantsTickets += ex.amount;
+                else spent.wantsCash += ex.amount;
             }
         });
 
         return {
-            limits,
-            spent,
+            totalIncome, limits, 
+            needsCashAllocated, wantsCashAllocated, needsTicketsTotal, wantsTicketsTotal,
             rem: {
-                needs: limits.needs - spent.needsCash,
-                wants: limits.wants - spent.wantsCash,
-                vouchers: limits.vouchers - spent.vouchers
+                needsCash: needsCashAllocated - spent.needsCash,
+                needsTickets: needsTicketsTotal - spent.needsTickets,
+                wantsCash: wantsCashAllocated - spent.wantsCash,
+                wantsTickets: wantsTicketsTotal - spent.wantsTickets
             }
         };
     }
 
-    render() {
+    // --- Render Dashboard & Tables ---
+    renderDashboard() {
         const data = this.calculateTotals();
 
-        // Top limits update
-        document.getElementById('limitNeeds').innerText = data.limits.needs.toFixed(2) + ' €';
-        document.getElementById('limitWants').innerText = data.limits.wants.toFixed(2) + ' €';
-        document.getElementById('limitInvest').innerText = data.limits.invest.toFixed(2) + ' €';
-        document.getElementById('limitVouchers').innerText = data.limits.vouchers.toFixed(2) + ' €';
+        // 1. User Breakdown Table
+        const pN = this.state.percentages.needs / 100;
+        const pW = this.state.percentages.wants / 100;
+        const pI = this.state.percentages.invest / 100;
 
-        // Table updates
+        const u1Cash = this.state.users.u1.income;
+        let breakdownHTML = `<tr>
+            <td>${this.state.users.u1.name}</td>
+            <td>${(u1Cash * pN).toFixed(2)}€</td>
+            <td>${(u1Cash * pW).toFixed(2)}€</td>
+            <td>${(u1Cash * pI).toFixed(2)}€</td>
+        </tr>`;
+
+        if (this.state.users.u2.active) {
+            const u2Cash = this.state.users.u2.income;
+            breakdownHTML += `<tr>
+                <td>${this.state.users.u2.name}</td>
+                <td>${(u2Cash * pN).toFixed(2)}€</td>
+                <td>${(u2Cash * pW).toFixed(2)}€</td>
+                <td>${(u2Cash * pI).toFixed(2)}€</td>
+            </tr>`;
+        }
+        document.getElementById('userBreakdownBody').innerHTML = breakdownHTML;
+
+        // 2. Summary Dashboard limits
+        document.getElementById('totalIncomeDisplay').innerText = data.totalIncome.toFixed(2) + ' €';
+        
+        document.getElementById('limitNeeds').innerHTML = `${data.limits.needs.toFixed(2)}€ <br><small style="font-size:0.75rem; font-weight:normal;">Cash: ${data.needsCashAllocated.toFixed(2)}€ | Tickets: ${data.needsTicketsTotal.toFixed(2)}€</small>`;
+        document.getElementById('limitWants').innerHTML = `${data.limits.wants.toFixed(2)}€ <br><small style="font-size:0.75rem; font-weight:normal;">Cash: ${data.wantsCashAllocated.toFixed(2)}€ | Tickets: ${data.wantsTicketsTotal.toFixed(2)}€</small>`;
+        document.getElementById('limitInvest').innerText = data.limits.invest.toFixed(2) + ' €';
+
+        // 3. Expense Tables
         const needsBody = document.getElementById('needsTableBody');
         const wantsBody = document.getElementById('wantsTableBody');
         needsBody.innerHTML = '';
@@ -229,12 +364,9 @@ class BudgetApp {
         this.state.expenses.forEach(ex => {
             const tr = document.createElement('tr');
             const subStr = this.subCategoryMap[ex.subCategory] || 'Άλλο';
-            
-            if (ex.category === 'needs') {
-                const paymentBadge = ex.useVoucher 
-                    ? `<br><span class="badge badge-voucher">Πληρώθηκε με Ticket</span>` 
-                    : '';
+            const paymentBadge = ex.isTicket ? `<br><span class="badge badge-voucher">Πληρώθηκε με Ticket</span>` : '';
 
+            if (ex.category === 'needs') {
                 tr.innerHTML = `
                     <td>${ex.name} ${paymentBadge}</td>
                     <td><span class="badge badge-sub">${subStr}</span></td>
@@ -244,7 +376,7 @@ class BudgetApp {
                 needsBody.appendChild(tr);
             } else {
                 tr.innerHTML = `
-                    <td>${ex.name}</td>
+                    <td>${ex.name} ${paymentBadge}</td>
                     <td><span class="badge badge-sub wants-badge">${subStr}</span></td>
                     <td>${ex.amount.toFixed(2)} €</td>
                     <td><button class="btn-delete btn-small" onclick="App.deleteExpense('${ex.id}')">X</button></td>
@@ -253,19 +385,20 @@ class BudgetApp {
             }
         });
 
-        // Remainder updates
-        const elNeeds = document.getElementById('remNeeds');
-        const elWants = document.getElementById('remWants');
-        const elVouch = document.getElementById('remVouchers');
+        // 4. Remainders
+        const setRem = (id, val) => {
+            const el = document.getElementById(id);
+            el.innerText = val.toFixed(2) + ' €';
+            el.style.color = val < 0 ? 'var(--danger)' : 'inherit';
+        };
 
-        elNeeds.innerText = data.rem.needs.toFixed(2) + ' €';
-        elNeeds.style.color = data.rem.needs < 0 ? 'var(--danger)' : 'var(--text-main)';
+        setRem('remNeedsCash', data.rem.needsCash);
+        setRem('remNeedsTickets', data.rem.needsTickets);
+        setRem('remWantsCash', data.rem.wantsCash);
+        setRem('remWantsTickets', data.rem.wantsTickets);
 
-        elWants.innerText = data.rem.wants.toFixed(2) + ' €';
-        elWants.style.color = data.rem.wants < 0 ? 'var(--danger)' : 'var(--text-main)';
-
-        elVouch.innerText = data.rem.vouchers.toFixed(2) + ' €';
-        elVouch.style.color = data.rem.vouchers < 0 ? 'var(--danger)' : 'var(--wants-color)';
+        // Update form UI to show/hide ticket checkbox dynamically
+        this.handleExpenseFormUI();
     }
 
     // --- JSON Backup & Restore ---
@@ -276,7 +409,7 @@ class BudgetApp {
         
         const a = document.createElement('a');
         a.href = url;
-        a.download = `smart_budget_backup_${new Date().toISOString().slice(0,10)}.json`;
+        a.download = `smart_budget_backup_v4_${new Date().toISOString().slice(0,10)}.json`;
         document.body.appendChild(a);
         a.click();
         
@@ -292,11 +425,10 @@ class BudgetApp {
         reader.onload = (e) => {
             try {
                 const importedState = JSON.parse(e.target.result);
-                // Basic validation
                 if (importedState && importedState.users && Array.isArray(importedState.expenses)) {
-                    this.state = importedState;
+                    this.migrateAndSetState(importedState);
                     this.saveState();
-                    this.initUI();
+                    this.fullRender();
                     alert("Τα δεδομένα ανακτήθηκαν επιτυχώς!");
                 } else {
                     alert("Το αρχείο JSON δεν έχει τη σωστή δομή.");
@@ -304,7 +436,7 @@ class BudgetApp {
             } catch (err) {
                 alert("Σφάλμα κατά την ανάγνωση του αρχείου. Βεβαιωθείτε ότι είναι έγκυρο JSON.");
             }
-            event.target.value = ''; // Reset input
+            event.target.value = ''; 
         };
         reader.readAsText(file);
     }

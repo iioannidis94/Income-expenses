@@ -3,15 +3,15 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Smart Budget Planner V3</title>
+    <title>Smart Budget Planner V4</title>
     <link rel="stylesheet" href="css/style.css">
 </head>
 <body>
 
 <div class="container">
     <header>
-        <h1>Smart Budget Planner</h1>
-        <p>Πλήρως Παραμετροποιήσιμη Διαχείριση (Dark Mode & Backup)</p>
+        <h1>Smart Budget Planner <span style="font-size: 1rem; color: var(--primary);">V4</span></h1>
+        <p>Custom Έσοδα, Δυναμικά Tickets & Συνεισφορές Χρηστών (Dark Mode & Backup)</p>
         <div class="header-actions">
             <button class="btn-secondary btn-small" onclick="App.exportData()">💾 Εξαγωγή (JSON)</button>
             <label class="btn-secondary btn-small" style="cursor:pointer;">
@@ -28,40 +28,50 @@
             <h2>1. Πηγές Εσόδων</h2>
             
             <div class="user-block">
+                <h3>Βασικοί Χρήστες</h3>
                 <div class="form-group row">
                     <div class="col">
                         <label>Όνομα Χρήστη 1</label>
-                        <input type="text" id="user1Name" value="Χρήστης 1" oninput="App.updateState()">
+                        <input type="text" id="user1Name" oninput="App.updateBaseState()">
                     </div>
                     <div class="col">
                         <label>Έσοδα (€)</label>
-                        <input type="number" id="user1Income" value="1000" oninput="App.updateState()">
+                        <input type="number" id="user1Income" oninput="App.updateBaseState()">
                     </div>
                 </div>
-            </div>
 
-            <div id="user2Container" class="user-block" style="display: none;">
-                <div class="form-group row">
-                    <div class="col">
-                        <label>Όνομα Χρήστη 2</label>
-                        <input type="text" id="user2Name" value="Χρήστης 2" oninput="App.updateState()">
+                <div id="user2Container" style="display: none;">
+                    <div class="form-group row mt-10">
+                        <div class="col">
+                            <label>Όνομα Χρήστη 2</label>
+                            <input type="text" id="user2Name" oninput="App.updateBaseState()">
+                        </div>
+                        <div class="col">
+                            <label>Έσοδα (€)</label>
+                            <input type="number" id="user2Income" oninput="App.updateBaseState()">
+                        </div>
                     </div>
-                    <div class="col">
-                        <label>Έσοδα (€)</label>
-                        <input type="number" id="user2Income" value="1000" oninput="App.updateState()">
-                    </div>
+                    <button class="btn-delete btn-small mt-10" onclick="App.toggleUser2(false)">- Αφαίρεση Χρήστη 2</button>
                 </div>
-                <button class="btn-secondary btn-small" onclick="App.toggleUser2(false)">- Αφαίρεση Χρήστη 2</button>
+                
+                <button id="addUser2Btn" class="btn-secondary btn-small mt-10" onclick="App.toggleUser2(true)">+ Προσθήκη 2ου Χρήστη</button>
             </div>
-            
-            <button id="addUser2Btn" class="btn-secondary mt-10" onclick="App.toggleUser2(true)">+ Προσθήκη Δεύτερου Χρήστη</button>
 
             <hr class="divider">
 
-            <div class="form-group">
-                <label>Κουπόνια / Tickets (€)</label>
-                <small class="help-text">Μπορούν να χρησιμοποιηθούν ΜΟΝΟ για Supermarket/Τρόφιμα</small>
-                <input type="number" id="vouchers" value="100" oninput="App.updateState()">
+            <div class="user-block">
+                <h3>Άλλες Πηγές Εσόδων (Custom)</h3>
+                <div id="extraIncomesContainer"></div>
+                <button class="btn-secondary btn-small mt-10" onclick="App.addExtraIncome()">+ Προσθήκη Εσόδου</button>
+            </div>
+
+            <hr class="divider">
+
+            <div class="user-block" style="border-color: var(--wants-color);">
+                <h3>Κουπόνια / Tickets</h3>
+                <small class="help-text" style="margin-bottom: 15px;">Επιλέξτε αν το κουπόνι θα μειώσει τα έξοδα των Needs (π.χ. Supermarket) ή των Wants.</small>
+                <div id="ticketsContainer"></div>
+                <button class="btn-secondary btn-small mt-10" onclick="App.addTicket()" style="background-color: var(--wants-color); color: #0f172a;">+ Προσθήκη Ticket</button>
             </div>
         </section>
 
@@ -72,38 +82,53 @@
             <div class="form-group row percentages-row">
                 <div class="col">
                     <label>Needs (%)</label>
-                    <input type="number" id="percNeeds" value="50" oninput="App.updateState()">
+                    <input type="number" id="percNeeds" oninput="App.updateBaseState()">
                 </div>
                 <div class="col">
                     <label>Wants (%)</label>
-                    <input type="number" id="percWants" value="30" oninput="App.updateState()">
+                    <input type="number" id="percWants" oninput="App.updateBaseState()">
                 </div>
                 <div class="col">
                     <label>Invest (%)</label>
-                    <input type="number" id="percInvest" value="20" oninput="App.updateState()">
+                    <input type="number" id="percInvest" oninput="App.updateBaseState()">
+                </div>
+            </div>
+
+            <!-- USER BREAKDOWN -->
+            <div class="user-breakdown">
+                <h4>Αναλογία Συνεισφοράς Χρηστών</h4>
+                <small style="color: var(--text-muted); display: block; margin-bottom: 10px;">Βάσει των προσωπικών τους εσόδων (Cash)</small>
+                <div class="table-container">
+                    <table class="breakdown-table">
+                        <thead>
+                            <tr>
+                                <th>Χρήστης</th>
+                                <th style="color: var(--needs-color);">Needs</th>
+                                <th style="color: var(--wants-color);">Wants</th>
+                                <th style="color: var(--invest-color);">Invest</th>
+                            </tr>
+                        </thead>
+                        <tbody id="userBreakdownBody"></tbody>
+                    </table>
                 </div>
             </div>
 
             <!-- DASHBOARD / SUMMARY -->
             <div class="summary-dashboard">
-                <h3>Διαθέσιμο Budget</h3>
-                <div class="stats-grid">
+                <h3>Συνολικό Budget: <span id="totalIncomeDisplay" style="color: var(--primary);">0€</span></h3>
+                <div class="stats-grid mt-10">
                     <div class="stat-card needs">
-                        <h4>Needs</h4>
-                        <div class="amount" id="limitNeeds">0€</div>
+                        <h4>Needs Total</h4>
+                        <div class="amount" id="limitNeeds" style="font-size: 1.1rem;">0€</div>
                     </div>
                     <div class="stat-card wants">
-                        <h4>Wants</h4>
-                        <div class="amount" id="limitWants">0€</div>
+                        <h4>Wants Total</h4>
+                        <div class="amount" id="limitWants" style="font-size: 1.1rem;">0€</div>
                     </div>
                     <div class="stat-card invest">
-                        <h4>Invest</h4>
-                        <div class="amount" id="limitInvest">0€</div>
+                        <h4>Invest Total</h4>
+                        <div class="amount" id="limitInvest" style="font-size: 1.1rem;">0€</div>
                     </div>
-                </div>
-                <div class="voucher-stat">
-                    <span>Διαθέσιμα Tickets (Supermarket):</span>
-                    <strong id="limitVouchers">0€</strong>
                 </div>
             </div>
         </section>
@@ -116,12 +141,12 @@
             <div class="grid-3">
                 <div class="form-group">
                     <label>Ονομασία Εξόδου</label>
-                    <input type="text" id="expName" placeholder="π.χ. Ενοίκιο Σπιτιού" required>
+                    <input type="text" id="expName" placeholder="π.χ. Ενοίκιο" required>
                 </div>
                 
                 <div class="form-group">
                     <label>Κατηγορία</label>
-                    <select id="expCategory" onchange="App.handleCategoryChange()">
+                    <select id="expCategory" onchange="App.handleExpenseFormUI()">
                         <option value="needs">Πάγια Έξοδα / Ανάγκες (Needs)</option>
                         <option value="wants">Επιθυμίες (Wants)</option>
                     </select>
@@ -129,7 +154,7 @@
 
                 <div class="form-group">
                     <label>Είδος / Υποκατηγορία</label>
-                    <select id="expSubCategory" onchange="App.handleSubCategoryChange()">
+                    <select id="expSubCategory">
                         <!-- Dynamic via JS -->
                     </select>
                 </div>
@@ -142,9 +167,9 @@
                 </div>
                 <div class="form-group mb-0 voucher-checkbox-group" id="voucherToggleGroup" style="display: none;">
                     <label class="checkbox-container">
-                        <input type="checkbox" id="expUseVoucher">
+                        <input type="checkbox" id="expIsTicket">
                         <span class="checkmark"></span>
-                        Πληρωμή με Tickets/Κουπόνια
+                        Πληρωμή με διαθέσιμο Ticket/Κουπόνι
                     </label>
                 </div>
             </div>
@@ -171,9 +196,15 @@
                     <tbody id="needsTableBody"></tbody>
                 </table>
             </div>
-            <div class="summary-footer">
-                <span>Υπόλοιπο Μετρητών (Needs):</span>
-                <span id="remNeeds">0.00 €</span>
+            <div class="summary-footer" style="flex-direction: column; gap: 8px;">
+                <div class="row w-100 justify-content-between">
+                    <span>Υπόλοιπο Μετρητών:</span>
+                    <span id="remNeedsCash">0.00 €</span>
+                </div>
+                <div class="row w-100 justify-content-between">
+                    <span style="color: var(--wants-color);">Υπόλοιπο Tickets (Needs):</span>
+                    <span id="remNeedsTickets" style="color: var(--wants-color);">0.00 €</span>
+                </div>
             </div>
         </section>
 
@@ -193,19 +224,18 @@
                     <tbody id="wantsTableBody"></tbody>
                 </table>
             </div>
-            <div class="summary-footer">
-                <span>Υπόλοιπο (Wants):</span>
-                <span id="remWants">0.00 €</span>
+            <div class="summary-footer" style="flex-direction: column; gap: 8px;">
+                <div class="row w-100 justify-content-between">
+                    <span>Υπόλοιπο Μετρητών:</span>
+                    <span id="remWantsCash">0.00 €</span>
+                </div>
+                <div class="row w-100 justify-content-between">
+                    <span style="color: var(--wants-color);">Υπόλοιπο Tickets (Wants):</span>
+                    <span id="remWantsTickets" style="color: var(--wants-color);">0.00 €</span>
+                </div>
             </div>
         </section>
     </div>
-    
-    <section class="card">
-        <div class="summary-footer">
-            <span>Υπόλοιπο Tickets (Supermarket):</span>
-            <span id="remVouchers" style="color: var(--wants-color);">0.00 €</span>
-        </div>
-    </section>
 
 </div>
 

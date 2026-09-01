@@ -45,12 +45,15 @@ header p { color: var(--text-muted); margin: 0 0 15px 0; }
 }
 
 h2 { font-size: 1.25rem; border-bottom: 2px solid var(--border); padding-bottom: 10px; margin-top: 0; }
-h3 { font-size: 1.1rem; margin-top: 0; }
+h3 { font-size: 1.1rem; margin-top: 0; margin-bottom: 12px; color: var(--primary);}
 
 .grid-2 { display: grid; grid-template-columns: 1fr 1fr; gap: 24px; }
 .grid-3 { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 16px; }
 .row { display: flex; gap: 16px; }
 .col { flex: 1; }
+
+.w-100 { width: 100%; }
+.justify-content-between { display: flex; justify-content: space-between; }
 
 @media (max-width: 768px) {
     .grid-2, .grid-3 { grid-template-columns: 1fr; }
@@ -72,7 +75,7 @@ label {
     text-transform: uppercase;
 }
 
-.help-text { display: block; font-size: 0.75rem; color: var(--needs-color); margin-bottom: 6px; }
+.help-text { display: block; font-size: 0.75rem; color: var(--text-muted); margin-bottom: 6px; }
 
 input[type="text"], input[type="number"], select {
     width: 100%;
@@ -102,7 +105,7 @@ button, .btn-secondary {
     width: 100%;
     transition: 0.2s;
 }
-button:hover { background-color: var(--primary-hover); }
+button:hover { background-color: var(--primary-hover); opacity: 0.9; }
 
 .btn-secondary { background-color: var(--secondary); }
 .btn-secondary:hover { background-color: var(--secondary-hover); }
@@ -122,17 +125,22 @@ button:hover { background-color: var(--primary-hover); }
     border: 1px solid var(--danger);
 }
 
+/* User Breakdown */
+.user-breakdown { margin-top: 25px; background: #0f172a; padding: 16px; border-radius: 8px; border: 1px solid var(--border); }
+.user-breakdown h4 { margin: 0 0 5px 0; font-size: 1rem; }
+.breakdown-table th { background: var(--secondary-hover); color: white; padding: 8px; font-size: 0.85rem; }
+.breakdown-table td { padding: 8px; font-size: 0.9rem; text-align: center; border-bottom: 1px solid var(--border);}
+.breakdown-table td:first-child { text-align: left; font-weight: bold; }
+
 /* Stats */
-.summary-dashboard { margin-top: 20px; padding-top: 20px; border-top: 1px solid var(--border); }
+.summary-dashboard { margin-top: 25px; padding-top: 20px; border-top: 1px solid var(--border); }
 .stats-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 12px; }
 .stat-card { background: #0f172a; padding: 12px; border-radius: 8px; text-align: center; border: 1px solid var(--border); }
-.stat-card h4 { margin: 0 0 5px 0; font-size: 0.8rem; text-transform: uppercase; }
-.stat-card .amount { font-size: 1.25rem; font-weight: bold; }
+.stat-card h4 { margin: 0 0 8px 0; font-size: 0.8rem; text-transform: uppercase; }
+.stat-card .amount { font-size: 1.25rem; font-weight: bold; line-height: 1.4; }
 .stat-card.needs h4 { color: var(--needs-color); }
 .stat-card.wants h4 { color: var(--wants-color); }
 .stat-card.invest h4 { color: var(--invest-color); }
-
-.voucher-stat { margin-top: 15px; text-align: center; background: rgba(52, 211, 153, 0.1); padding: 10px; border-radius: 8px; color: var(--wants-color); border: 1px solid var(--wants-color);}
 
 /* Checkbox */
 .checkbox-container { display: flex; align-items: center; cursor: pointer; font-size: 0.9rem; font-weight: normal; text-transform: none; color: var(--text-main); }
@@ -140,7 +148,7 @@ button:hover { background-color: var(--primary-hover); }
 .checkmark { width: 20px; height: 20px; background: #0f172a; border: 2px solid var(--border); border-radius: 4px; margin-right: 10px; display: inline-flex; justify-content: center; align-items: center; }
 .checkbox-container input:checked + .checkmark { background: var(--wants-color); border-color: var(--wants-color); }
 .checkbox-container input:checked + .checkmark::after { content: '✓'; color: #0f172a; font-size: 14px; font-weight: bold; }
-.voucher-checkbox-group { background: rgba(253, 230, 138, 0.1); padding: 12px; border-radius: 8px; border: 1px solid #fde68a; }
+.voucher-checkbox-group { background: rgba(52, 211, 153, 0.1); padding: 12px; border-radius: 8px; border: 1px solid var(--wants-color); }
 
 /* Tables */
 .table-container { overflow-x: auto; }
