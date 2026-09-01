@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Smart Budget Planner V2</title>
+    <title>Smart Budget Planner V3</title>
     <link rel="stylesheet" href="css/style.css">
 </head>
 <body>
@@ -11,7 +11,14 @@
 <div class="container">
     <header>
         <h1>Smart Budget Planner</h1>
-        <p>Πλήρως Παραμετροποιήσιμη Διαχείριση Εσόδων - Εξόδων</p>
+        <p>Πλήρως Παραμετροποιήσιμη Διαχείριση (Dark Mode & Backup)</p>
+        <div class="header-actions">
+            <button class="btn-secondary btn-small" onclick="App.exportData()">💾 Εξαγωγή (JSON)</button>
+            <label class="btn-secondary btn-small" style="cursor:pointer;">
+                📂 Εισαγωγή (JSON)
+                <input type="file" id="importFile" accept=".json" style="display:none;" onchange="App.importData(event)">
+            </label>
+        </div>
     </header>
 
     <!-- SETTINGS & INCOMES -->
@@ -47,7 +54,7 @@
                 <button class="btn-secondary btn-small" onclick="App.toggleUser2(false)">- Αφαίρεση Χρήστη 2</button>
             </div>
             
-            <button id="addUser2Btn" class="btn-secondary" onclick="App.toggleUser2(true)">+ Προσθήκη Δεύτερου Χρήστη</button>
+            <button id="addUser2Btn" class="btn-secondary mt-10" onclick="App.toggleUser2(true)">+ Προσθήκη Δεύτερου Χρήστη</button>
 
             <hr class="divider">
 
@@ -95,7 +102,7 @@
                     </div>
                 </div>
                 <div class="voucher-stat">
-                    <span>Διαθέσιμα Tickets (Μόνο Supermarket):</span>
+                    <span>Διαθέσιμα Tickets (Supermarket):</span>
                     <strong id="limitVouchers">0€</strong>
                 </div>
             </div>
@@ -120,14 +127,10 @@
                     </select>
                 </div>
 
-                <div class="form-group" id="subCategoryGroup">
-                    <label>Είδος Πάγιου Εξόδου</label>
-                    <select id="expSubCategory" onchange="App.handleCategoryChange()">
-                        <option value="rent">Ενοίκιο</option>
-                        <option value="supermarket">Supermarket / Τρόφιμα</option>
-                        <option value="bills">Λογαριασμοί (Ρεύμα, Νερό, Τηλ)</option>
-                        <option value="transport">Μετακίνηση</option>
-                        <option value="other">Άλλο Πάγιο</option>
+                <div class="form-group">
+                    <label>Είδος / Υποκατηγορία</label>
+                    <select id="expSubCategory" onchange="App.handleSubCategoryChange()">
+                        <!-- Dynamic via JS -->
                     </select>
                 </div>
             </div>
@@ -160,7 +163,7 @@
                     <thead>
                         <tr>
                             <th>Όνομα</th>
-                            <th>Είδος</th>
+                            <th>Κατηγορία</th>
                             <th>Ποσό</th>
                             <th></th>
                         </tr>
@@ -182,6 +185,7 @@
                     <thead>
                         <tr>
                             <th>Όνομα</th>
+                            <th>Κατηγορία</th>
                             <th>Ποσό</th>
                             <th></th>
                         </tr>
