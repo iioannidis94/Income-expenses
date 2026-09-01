@@ -1,9 +1,6 @@
-/**
- * state.js - Διαχείριση State, LocalStorage, Migrations & Import/Export
- */
 class StateManager {
     constructor() {
-        this.storageKey = 'smart_budget_v12_data';
+        this.storageKey = 'smart_budget_v13_data';
         this.categoryData = {
             needs: [
                 { id: 'rent', label: 'Ενοίκιο' },
@@ -52,7 +49,7 @@ class StateManager {
             try { this.migrateAndSetState(JSON.parse(saved)); return; } catch (e) {}
         }
         // Fallback to older versions
-        const olderKeys = ['smart_budget_v11_data', 'smart_budget_v10_data', 'smart_budget_v9_data', 'smart_budget_v8_data'];
+        const olderKeys = ['smart_budget_v12_data', 'smart_budget_v11_data', 'smart_budget_v10_data'];
         for (let key of olderKeys) {
             const olderSaved = localStorage.getItem(key);
             if (olderSaved) {

@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Smart Budget Planner V12 (Modular JS)</title>
+    <title>Smart Budget Planner V13</title>
     <link rel="stylesheet" href="css/style.css">
     <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
 </head>
@@ -11,8 +11,8 @@
 
 <div class="container">
     <header>
-        <h1>Smart Budget Planner <span style="font-size: 1rem; color: var(--primary);">V12</span></h1>
-        <p>Modular Αρχιτεκτονική JS, Ταξινόμηση, Ιδιοκτησία Λογαριασμών & Εκκαθάριση</p>
+        <h1>Smart Budget Planner <span style="font-size: 1rem; color: var(--primary);">V13</span></h1>
+        <p>Έξυπνη Συμπλήρωση Ποσοστών (Smart Fill), Ταξινόμηση & Εκκαθάριση</p>
         <div class="header-actions" style="flex-wrap: wrap;">
             <button class="btn-secondary btn-small" onclick="App.exportData()">💾 Εξαγωγή (JSON)</button>
             <label class="btn-secondary btn-small" style="cursor:pointer;">
@@ -115,18 +115,22 @@
                 <div class="col">
                     <label>Needs (%)</label>
                     <input type="number" id="percNeeds" oninput="App.updateBaseState()">
+                    <div id="hint_percNeeds" style="min-height: 28px; margin-top: 6px;"></div>
                 </div>
                 <div class="col">
                     <label>Wants (%)</label>
                     <input type="number" id="percWants" oninput="App.updateBaseState()">
+                    <div id="hint_percWants" style="min-height: 28px; margin-top: 6px;"></div>
                 </div>
                 <div class="col">
                     <label>Invest (%)</label>
                     <input type="number" id="percInvest" oninput="App.updateBaseState()">
+                    <div id="hint_percInvest" style="min-height: 28px; margin-top: 6px;"></div>
                 </div>
                 <div class="col">
                     <label style="color: var(--savings-color);">Savings (%)</label>
                     <input type="number" id="percSavings" oninput="App.updateBaseState()">
+                    <div id="hint_percSavings" style="min-height: 28px; margin-top: 6px;"></div>
                 </div>
             </div>
 

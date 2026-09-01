@@ -1,6 +1,3 @@
-/**
- * ui.js - Render DOM στοιχείων, πινάκων, widgets & γραφήματος Chart.js
- */
 class UIManager {
     constructor(stateManager) {
         this.stateManager = stateManager;
@@ -30,6 +27,31 @@ class UIManager {
 
         document.getElementById('user2Container').style.display = state.users.u2.active ? 'block' : 'none';
         document.getElementById('addUser2Btn').style.display = state.users.u2.active ? 'none' : 'block';
+    }
+    
+    // --- SMART FILL FEATURE ---
+    renderSmartFills() {
+        const state = this.stateManager.state;
+        const pN = state.percentages.needs || 0;
+        const pW = state.percentages.wants || 0;
+        const pI = state.percentages.invest || 0;
+        const pS = state.percentages.savings || 0;
+        const sum = pN + pW + pI + pS;
+
+        const updateHint = (id, othersSum) => {
+            const container = document.getElementById('hint_' + id);
+            const needed = 100 - othersSum;
+            if (sum !== 100 && needed >= 0 && needed <= 100) {
+                container.innerHTML = `<span class="smart-fill-hint" onclick="App.applySmartFill('${id}', ${needed})">💡 Κάντο ${needed}%</span>`;
+            } else {
+                container.innerHTML = '';
+            }
+        };
+
+        updateHint('percNeeds', pW + pI + pS);
+        updateHint('percWants', pN + pI + pS);
+        updateHint('percInvest', pN + pW + pS);
+        updateHint('percSavings', pN + pW + pI);
     }
 
     renderExtraUsers() {
@@ -306,6 +328,7 @@ class UIManager {
         setRem('remWantsTickets', data.rem.wantsTickets);
 
         this.handleExpenseFormUI(data);
+        this.renderSmartFills();
         SettlementsManager.populate(document.getElementById('settlementsBody'), data, this.stateManager);
     }
 

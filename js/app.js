@@ -1,6 +1,3 @@
-/**
- * app.js - Κεντρικός Controller που συνδέει State, UI και User Actions
- */
 class MainApp {
     constructor() {
         this.stateManager = new StateManager();
@@ -38,6 +35,12 @@ class MainApp {
         this.ui.renderPaymentMethods();
         this.ui.renderTickets();
         this.refresh();
+    }
+    
+    // --- SMART FILL TRIGGER ---
+    applySmartFill(inputId, neededValue) {
+        document.getElementById(inputId).value = neededValue;
+        this.updateBaseState();
     }
 
     toggleUser2(isActive) {
@@ -239,7 +242,7 @@ class MainApp {
         const url = URL.createObjectURL(blob);
         const a = document.createElement('a');
         a.href = url;
-        a.download = `smart_budget_backup_v12_${new Date().toISOString().slice(0, 10)}.json`;
+        a.download = `smart_budget_backup_v13_${new Date().toISOString().slice(0, 10)}.json`;
         document.body.appendChild(a);
         a.click();
         document.body.removeChild(a);

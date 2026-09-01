@@ -1,6 +1,3 @@
-/**
- * calculator.js - Μαθηματικοί υπολογισμοί Budget, Overflows & Settlements
- */
 class BudgetCalculator {
     static calculate(stateManager) {
         const state = stateManager.state;
@@ -106,7 +103,6 @@ class BudgetCalculator {
             }
         });
 
-        // Compute Balances
         let userBalances = {};
         activeUsers.forEach(u => userBalances[u.id] = 0);
 

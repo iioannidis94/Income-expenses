@@ -1,6 +1,3 @@
-/**
- * settlements.js - Λογική εκκαθάρισης οφειλών & Render Modal
- */
 class SettlementsManager {
     static populate(container, data, stateManager) {
         const balances = data.settlements;
