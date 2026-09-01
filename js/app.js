@@ -1,101 +1,196 @@
-/**
- * Αρχιτεκτονίδα MVC / Modular State Management 
- * Έτοιμο για μελλοντικά updates (π.χ. προσθήκη user authentication, graphs, charts.js, κλπ.)
- */
 class BudgetApp {
     constructor() {
-        this.storageKeys = {
-            incomes: 'smart_budget_incomes',
-            expenses: 'smart_budget_expenses'
-        };
+        this.storageKey = 'smart_budget_v2_data';
         
+        this.state = {
+            users: {
+                u1: { active: true, name: 'Χρήστης 1', income: 1000 },
+                u2: { active: false, name: 'Χρήστης 2', income: 1000 }
+            },
+            vouchers: 100,
+            percentages: { needs: 50, wants: 30, invest: 20 },
+            expenses: []
+        };
+
+        this.subCategoryMap = {
+            'rent': 'Ενοίκιο',
+            'supermarket': 'Supermarket/Τρόφιμα',
+            'bills': 'Λογαριασμοί',
+            'transport': 'Μετακίνηση',
+            'other': 'Άλλο Πάγιο'
+        };
+
         this.loadState();
+        this.initUI();
     }
 
     loadState() {
-        // Φόρτωση εσόδων (με default τιμές αν είναι κενό)
-        const savedIncomes = localStorage.getItem(this.storageKeys.incomes);
-        this.incomes = savedIncomes ? JSON.parse(savedIncomes) : { in1: 1483, in2: 1475, in3: 100 };
-
-        // Φόρτωση εξόδων
-        const savedExpenses = localStorage.getItem(this.storageKeys.expenses);
-        this.expenses = savedExpenses ? JSON.parse(savedExpenses) : [];
-
-        // Sync UI Inputs
-        const in1El = document.getElementById('income1');
-        const in2El = document.getElementById('income2');
-        const in3El = document.getElementById('income3');
-        
-        if (in1El) in1El.value = this.incomes.in1;
-        if (in2El) in2El.value = this.incomes.in2;
-        if (in3El) in3El.value = this.incomes.in3;
+        const saved = localStorage.getItem(this.storageKey);
+        if (saved) {
+            this.state = JSON.parse(saved);
+        }
     }
 
     saveState() {
-        localStorage.setItem(this.storageKeys.incomes, JSON.stringify(this.incomes));
-        localStorage.setItem(this.storageKeys.expenses, JSON.stringify(this.expenses));
+        localStorage.setItem(this.storageKey, JSON.stringify(this.state));
     }
 
-    handleIncomeChange() {
-        this.incomes = {
-            in1: parseFloat(document.getElementById('income1').value) || 0,
-            in2: parseFloat(document.getElementById('income2').value) || 0,
-            in3: parseFloat(document.getElementById('income3').value) || 0
-        };
+    initUI() {
+        // Hydrate Inputs
+        document.getElementById('user1Name').value = this.state.users.u1.name;
+        document.getElementById('user1Income').value = this.state.users.u1.income;
+        
+        document.getElementById('user2Name').value = this.state.users.u2.name;
+        document.getElementById('user2Income').value = this.state.users.u2.income;
+        
+        document.getElementById('vouchers').value = this.state.vouchers;
+
+        document.getElementById('percNeeds').value = this.state.percentages.needs;
+        document.getElementById('percWants').value = this.state.percentages.wants;
+        document.getElementById('percInvest').value = this.state.percentages.invest;
+
+        // Toggle User 2 visibility based on state
+        this.toggleUser2(this.state.users.u2.active, true);
+        
+        this.handleCategoryChange(); // Setup form visibility
+        this.render();
+    }
+
+    toggleUser2(isActive, isInit = false) {
+        this.state.users.u2.active = isActive;
+        
+        document.getElementById('user2Container').style.display = isActive ? 'block' : 'none';
+        document.getElementById('addUser2Btn').style.display = isActive ? 'none' : 'block';
+        
+        if (!isInit) {
+            this.updateState();
+        }
+    }
+
+    updateState() {
+        // Users & Vouchers
+        this.state.users.u1.name = document.getElementById('user1Name').value || 'Χρήστης 1';
+        this.state.users.u1.income = parseFloat(document.getElementById('user1Income').value) || 0;
+        
+        this.state.users.u2.name = document.getElementById('user2Name').value || 'Χρήστης 2';
+        this.state.users.u2.income = parseFloat(document.getElementById('user2Income').value) || 0;
+
+        this.state.vouchers = parseFloat(document.getElementById('vouchers').value) || 0;
+
+        // Percentages
+        const pNeeds = parseFloat(document.getElementById('percNeeds').value) || 0;
+        const pWants = parseFloat(document.getElementById('percWants').value) || 0;
+        const pInvest = parseFloat(document.getElementById('percInvest').value) || 0;
+
+        this.state.percentages = { needs: pNeeds, wants: pWants, invest: pInvest };
+
+        // Validation
+        const totalPerc = pNeeds + pWants + pInvest;
+        const errEl = document.getElementById('percentageError');
+        if (totalPerc !== 100) {
+            errEl.style.display = 'block';
+        } else {
+            errEl.style.display = 'none';
+        }
+
         this.saveState();
         this.render();
     }
 
-    handleFormSubmit(event) {
-        event.preventDefault();
-        const nameInput = document.getElementById('expenseName');
-        const categoryInput = document.getElementById('expenseCategory');
-        const amountInput = document.getElementById('expenseAmount');
+    handleCategoryChange() {
+        const cat = document.getElementById('expCategory').value;
+        const subCatGroup = document.getElementById('subCategoryGroup');
+        const subCat = document.getElementById('expSubCategory').value;
+        const voucherGroup = document.getElementById('voucherToggleGroup');
+        const useVoucherCheck = document.getElementById('expUseVoucher');
 
-        const newExpense = {
+        if (cat === 'needs') {
+            subCatGroup.style.display = 'block';
+            if (subCat === 'supermarket') {
+                voucherGroup.style.display = 'block';
+            } else {
+                voucherGroup.style.display = 'none';
+                useVoucherCheck.checked = false;
+            }
+        } else {
+            subCatGroup.style.display = 'none';
+            voucherGroup.style.display = 'none';
+            useVoucherCheck.checked = false;
+        }
+    }
+
+    addExpense(e) {
+        e.preventDefault();
+
+        const name = document.getElementById('expName').value.trim();
+        const category = document.getElementById('expCategory').value;
+        const subCategory = category === 'needs' ? document.getElementById('expSubCategory').value : null;
+        const amount = parseFloat(document.getElementById('expAmount').value);
+        const useVoucher = category === 'needs' && subCategory === 'supermarket' ? document.getElementById('expUseVoucher').checked : false;
+
+        if (!name || isNaN(amount) || amount <= 0) return;
+
+        const expense = {
             id: Date.now().toString(),
-            name: nameInput.value.trim(),
-            category: categoryInput.value,
-            amount: parseFloat(amountInput.value)
+            name,
+            category,
+            subCategory,
+            amount,
+            useVoucher
         };
 
-        this.expenses.push(newExpense);
+        this.state.expenses.push(expense);
         this.saveState();
-        
-        // Καθαρισμός φόρμας
-        nameInput.value = '';
-        amountInput.value = '';
-        nameInput.focus();
+
+        // Reset form specifics
+        document.getElementById('expName').value = '';
+        document.getElementById('expAmount').value = '';
+        document.getElementById('expUseVoucher').checked = false;
+        document.getElementById('expName').focus();
 
         this.render();
     }
 
     deleteExpense(id) {
-        this.expenses = this.expenses.filter(item => item.id !== id);
+        this.state.expenses = this.state.expenses.filter(ex => ex.id !== id);
         this.saveState();
         this.render();
     }
 
     calculateTotals() {
-        const totalIncome = this.incomes.in1 + this.incomes.in2 + this.incomes.in3;
+        // Total Cash
+        let totalCash = this.state.users.u1.income;
+        if (this.state.users.u2.active) {
+            totalCash += this.state.users.u2.income;
+        }
+
+        const p = this.state.percentages;
+        // If percentages don't match 100, calculations will just use whatever they set.
         const limits = {
-            needs: totalIncome * 0.50,
-            wants: totalIncome * 0.30,
-            invest: totalIncome * 0.20
+            needs: totalCash * (p.needs / 100),
+            wants: totalCash * (p.wants / 100),
+            invest: totalCash * (p.invest / 100),
+            vouchers: this.state.vouchers
         };
 
-        const spent = this.expenses.reduce((acc, curr) => {
-            acc[curr.category] += curr.amount;
-            return acc;
-        }, { needs: 0, wants: 0 });
+        let spent = { needsCash: 0, wantsCash: 0, vouchers: 0 };
+
+        this.state.expenses.forEach(ex => {
+            if (ex.useVoucher) {
+                spent.vouchers += ex.amount;
+            } else {
+                if (ex.category === 'needs') spent.needsCash += ex.amount;
+                if (ex.category === 'wants') spent.wantsCash += ex.amount;
+            }
+        });
 
         return {
-            totalIncome,
             limits,
             spent,
-            remaining: {
-                needs: limits.needs - spent.needs,
-                wants: limits.wants - spent.wants
+            rem: {
+                needs: limits.needs - spent.needsCash,
+                wants: limits.wants - spent.wantsCash,
+                vouchers: limits.vouchers - spent.vouchers
             }
         };
     }
@@ -103,50 +198,59 @@ class BudgetApp {
     render() {
         const data = this.calculateTotals();
 
-        // Render Summary / Limits
-        document.getElementById('totalIncomeDisplay').innerText = data.totalIncome.toFixed(2);
-        document.getElementById('limitNeeds').innerText = data.limits.needs.toFixed(2) + '€';
-        document.getElementById('limitWants').innerText = data.limits.wants.toFixed(2) + '€';
-        document.getElementById('limitInvest').innerText = data.limits.invest.toFixed(2) + '€';
-        document.getElementById('valInvest').innerText = data.limits.invest.toFixed(2) + ' €';
+        // Top limits update
+        document.getElementById('limitNeeds').innerText = data.limits.needs.toFixed(2) + ' €';
+        document.getElementById('limitWants').innerText = data.limits.wants.toFixed(2) + ' €';
+        document.getElementById('limitInvest').innerText = data.limits.invest.toFixed(2) + ' €';
+        document.getElementById('limitVouchers').innerText = data.limits.vouchers.toFixed(2) + ' €';
 
-        // Render Tables
+        // Table updates
         const needsBody = document.getElementById('needsTableBody');
         const wantsBody = document.getElementById('wantsTableBody');
-
         needsBody.innerHTML = '';
         wantsBody.innerHTML = '';
 
-        this.expenses.forEach(exp => {
+        this.state.expenses.forEach(ex => {
             const tr = document.createElement('tr');
-            tr.innerHTML = `
-                <td>${exp.name}</td>
-                <td>${exp.amount.toFixed(2)} €</td>
-                <td><button class="delete-btn" onclick="App.deleteExpense('${exp.id}')">Διαγραφή</button></td>
-            `;
+            
+            if (ex.category === 'needs') {
+                const subStr = this.subCategoryMap[ex.subCategory] || '';
+                const paymentBadge = ex.useVoucher 
+                    ? `<span class="badge badge-voucher">Πληρώθηκε με Ticket</span>` 
+                    : '';
 
-            if (exp.category === 'needs') {
+                tr.innerHTML = `
+                    <td>${ex.name} <br>${paymentBadge}</td>
+                    <td><span class="badge badge-sub">${subStr}</span></td>
+                    <td>${ex.amount.toFixed(2)} €</td>
+                    <td><button class="btn-delete btn-small" onclick="App.deleteExpense('${ex.id}')">X</button></td>
+                `;
                 needsBody.appendChild(tr);
             } else {
+                tr.innerHTML = `
+                    <td>${ex.name}</td>
+                    <td>${ex.amount.toFixed(2)} €</td>
+                    <td><button class="btn-delete btn-small" onclick="App.deleteExpense('${ex.id}')">X</button></td>
+                `;
                 wantsBody.appendChild(tr);
             }
         });
 
-        // Render Remainings
-        const remNeedsEl = document.getElementById('remainingNeeds');
-        const remWantsEl = document.getElementById('remainingWants');
+        // Remainder updates
+        const elNeeds = document.getElementById('remNeeds');
+        const elWants = document.getElementById('remWants');
+        const elVouch = document.getElementById('remVouchers');
 
-        remNeedsEl.innerText = data.remaining.needs.toFixed(2) + ' €';
-        remWantsEl.innerText = data.remaining.wants.toFixed(2) + ' €';
+        elNeeds.innerText = data.rem.needs.toFixed(2) + ' €';
+        elNeeds.style.color = data.rem.needs < 0 ? 'var(--danger)' : 'var(--text-main)';
 
-        remNeedsEl.style.color = data.remaining.needs < 0 ? 'var(--danger)' : 'var(--text-color)';
-        remWantsEl.style.color = data.remaining.wants < 0 ? 'var(--danger)' : 'var(--text-color)';
+        elWants.innerText = data.rem.wants.toFixed(2) + ' €';
+        elWants.style.color = data.rem.wants < 0 ? 'var(--danger)' : 'var(--text-main)';
+
+        elVouch.innerText = data.rem.vouchers.toFixed(2) + ' €';
+        elVouch.style.color = data.rem.vouchers < 0 ? 'var(--danger)' : 'var(--wants-color)';
     }
 }
 
-// Αρχικοποίηση εφαρμογής
+// Global App Instance
 const App = new BudgetApp();
-// Πρώτο render κατά τη φόρτωση
-document.addEventListener('DOMContentLoaded', () => {
-    App.render();
-});
